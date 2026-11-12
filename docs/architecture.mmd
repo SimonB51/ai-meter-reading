@@ -1,0 +1,18 @@
+%%{init: {"theme":"base","themeVariables":{"primaryColor":"#eef6f4","primaryBorderColor":"#0f6b5c","lineColor":"#555","fontFamily":"Helvetica"}}}%%
+flowchart TB
+  U["📷 Field agent / browser — photo upload"] -->|HTTPS| ALB["Application Load Balancer · ECS Express Mode"]
+  ALB --> API
+  subgraph ECS["ECS Fargate task (Docker) · 1 vCPU / 2 GB · autoscaling 1–2"]
+    direction LR
+    API["FastAPI"] --> P1["YOLOv8n #1<br/>counter window"] --> P2["YOLOv8n #2<br/>black/red blocks → rotation"] --> P3["crop black digits"] --> P4["PP-OCR ×4 variants<br/>→ last 3 digits"] --> C{"confidence ≥ 0.5<br/>& no anomaly?"}
+  end
+  C -->|yes| AUTO["✅ auto-accepted"]
+  C -->|no| REV["👤 review queue — human corrects"] --> RT["corrections.csv → retraining (active learning)"]
+  subgraph AWS["AWS managed services"]
+    direction LR
+    S3[("S3 · photos")]
+    DDB[("DynamoDB · readings")]
+    CW["CloudWatch Logs"]
+    ECR[("ECR · image")]
+  end
+  ECS --- AWS

@@ -1,0 +1,8 @@
+.venv
+data
+models_raw
+reports
+docs
+tests
+**/__pycache__
+*.log

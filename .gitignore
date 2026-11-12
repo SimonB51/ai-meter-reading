@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+data/runtime/
+data/eval/
+models_raw/
+reports/eval_log.txt
+infra/.service_arn
+.pytest_cache/
+*.log
+.env
+pictures_index.txt

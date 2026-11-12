@@ -1,0 +1,11 @@
+# torch / torchvision are installed separately (CPU wheels) - see Dockerfile
+ultralytics==8.4.211
+rapidocr-onnxruntime==1.2.3
+onnxruntime==1.31.1
+opencv-python-headless==5.0.0.93
+numpy==2.5.4
+fastapi==0.162.5
+uvicorn[standard]==0.54.0
+python-multipart==0.0.33
+pydantic==2.14.3
+boto3==1.44.1
