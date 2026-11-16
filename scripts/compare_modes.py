@@ -16,7 +16,7 @@ imgs = {p.stem: cv2.imread(str(p)) for p in photos}
 out = Path(__file__).resolve().parents[1] / "reports"; out.mkdir(exist_ok=True)
 summary = []
 VARIANTS = {"yolo": dict(mode="yolo", use_digit_reader=False), "obb": dict(mode="obb", use_digit_reader=False),
-            "hybrid": dict(mode="hybrid", use_digit_reader=False), "hybrid+cnn": dict(mode="hybrid")}
+            "hybrid": dict(mode="hybrid", use_digit_reader=False), "hybrid+cnn": dict(mode="hybrid", use_digit_reader=True)}
 for mode, kw in VARIANTS.items():
     R = MeterReader(**kw)
     rows = []

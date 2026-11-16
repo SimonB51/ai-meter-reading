@@ -130,10 +130,12 @@ def _best_obox(result, cls_id: int) -> OBox | None:
 class MeterReader:
     def __init__(self, models_dir: Path = MODELS, review_threshold: float = 0.5,
                  device: str = "cpu", mode: str | None = None,
-                 use_digit_reader: bool = True):
+                 use_digit_reader: bool = False):
         """mode: 'obb'    -> oriented-box detector (tight crop, any angle)
                  'yolo'   -> original axis-aligned detector + 2nd pass
-                 'hybrid' -> read the crops of both and keep the most confident (default if OBB weights exist)"""
+                 'hybrid' -> read the crops of both and keep the most confident (default if OBB weights exist)
+        use_digit_reader: experimental second reader (small CNN on the straightened band). Off by default:
+                 with only 651 training bands its gain on the 64 test photos (+2 readings) is within noise."""
         from ultralytics import YOLO
         from rapidocr_onnxruntime import RapidOCR
 

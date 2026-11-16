@@ -179,9 +179,9 @@ footer a{text-decoration:none}footer a:hover{color:var(--ink)}
       </div>
       <div class="big">
         <div class="label">Accuracy on auto-accepted readings</div>
-        <div class="n">98 %</div>
+        <div class="n">95 %</div>
         <div class="dots" id="heroDots"></div>
-        <small>Measured on 64 held-out photos the reader never saw.</small>
+        <small>Measured on 64 labelled test photos.</small>
       </div>
     </div>
   </div>
@@ -194,8 +194,8 @@ footer a{text-decoration:none}footer a:hover{color:var(--ink)}
     <div class="how">
       <div class="step"><span class="eyebrow">Step 1 of 4</span><b>Find the meter</b><p>A YOLO detector finds the counter window anywhere in the photo, at any distance.</p></div>
       <div class="step"><span class="eyebrow">Step 2 of 4</span><b>Straighten it</b><p>Rotated boxes locate the black and red digit drums. Their positions give the exact angle.</p></div>
-      <div class="step"><span class="eyebrow">Step 3 of 4</span><b>Read it twice</b><p>An OCR model and a digit CNN trained on meter photos read the numbers independently.</p></div>
-      <div class="step"><span class="eyebrow">Step 4 of 4</span><b>Know when to ask</b><p>Both agree: accepted. They disagree: a human checks, and the correction becomes training data.</p></div>
+      <div class="step"><span class="eyebrow">Step 3 of 4</span><b>Read it four ways</b><p>An OCR model reads the digit band from four slightly different views and checks that they agree.</p></div>
+      <div class="step"><span class="eyebrow">Step 4 of 4</span><b>Know when to ask</b><p>Confident: accepted. Unsure: a human checks, and the correction becomes training data.</p></div>
     </div>
   </section>
 
@@ -203,7 +203,7 @@ footer a{text-decoration:none}footer a:hover{color:var(--ink)}
     <span class="eyebrow">Results</span>
     <h2>Precise when sure,<br><em>honest when not.</em></h2>
     <div class="stats">
-      <div class="stat"><div class="n">98<em>%</em></div><p>accuracy on the readings it accepts on its own.</p></div>
+      <div class="stat"><div class="n">95<em>%</em></div><p>accuracy on the readings it accepts on its own.</p></div>
       <div class="stat"><div class="n">2<em>/3</em></div><p>of photos handled with no human at all.</p></div>
       <div class="stat"><div class="n">0.6<em>s</em></div><p>per photo on a single CPU, from upload to reading.</p></div>
     </div>
@@ -224,7 +224,7 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const dots=(n,filled)=>Array.from({length:n},(_,i)=>`<i class="${i<filled?'f':''}"></i>`).join('');
 $('#heroDots').innerHTML=dots(20,0);
-setTimeout(()=>{let k=0;const t=setInterval(()=>{const d=document.querySelectorAll('#heroDots i');if(k<20&&k<Math.round(20*.98))d[k++].classList.add('f');else clearInterval(t)},45)},400);
+setTimeout(()=>{let k=0;const t=setInterval(()=>{const d=document.querySelectorAll('#heroDots i');if(k<20&&k<Math.round(20*.95))d[k++].classList.add('f');else clearInterval(t)},45)},400);
 
 const drop=$('#drop'),file=$('#file');
 drop.ondragover=e=>{e.preventDefault();drop.classList.add('hover')};
@@ -260,7 +260,7 @@ async function send(f){
   const status={auto:['auto','✓ Accepted automatically'],review:['review','⚑ Sent to a human: the model isn\'t sure'],failed:['failed','No meter found in this photo']}[d.status]||['review',d.status];
   const meta=[`${Math.round(d.timings_ms?.total||0)} ms`];
   if(d.angle_deg!=null&&Math.abs(d.angle_deg)>8)meta.push(`straightened ${Math.round(Math.abs(d.angle_deg))}°`);
-  if((d.method||'').includes('cnn_agree'))meta.push('OCR and CNN agree');
+  if(d.stage_conf?.ocr_agreement===1)meta.push('4 of 4 views agree');
   $('#result').innerHTML=frame(`<div class="res">
     <img class="photo" src="${url}" alt="your photo">
     <div class="out">

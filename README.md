@@ -1,6 +1,8 @@
 # AI Meter Reading
 
-**A water-meter photo goes in. The reading, a confidence score and a human check when the model is unsure come out. Deployed on AWS.**
+**A water-meter photo goes in. The reading, a confidence score and a human check when the model is unsure come out.**
+
+**Live demo: https://meter-reader-764094047053.europe-west1.run.app** (Google Cloud Run). AWS deployment (ECS Express Mode + S3 + DynamoDB) is scripted in `infra/`.
 
 > Started as a one-week team project in school (original notebook: [QuiterieGuignard/AI-for-meters-reading-](https://github.com/QuiterieGuignard/AI-for-meters-reading-)). This repo is my rebuild of it as a deployed product: a clean pipeline, a held-out evaluation, an API with human review, and AWS infrastructure.
 
@@ -21,7 +23,7 @@ Agents still read water meters by hand and type in the numbers, which makes erro
 | 1. Find the counter window | **YOLOv8n #1**, fine-tuned from COCO weights on a small set of photos hand-labelled in Roboflow, then retrained on its own confident predictions (**pseudo-labelling**, conf ≥ 0.3). Dataset: 795 meter photos. | Photos are taken from any distance and angle. Detection isolates the region of interest. |
 | 2. Orientation | **YOLOv8n-OBB** (rotated boxes, trained on my annotations) + the original **YOLOv8n #2** detect the *black* (m³) and *red* (litres) digit blocks | The black-to-red vector gives the meter's orientation, so photos taken sideways or upside down are fixed with one rotation (`atan2`). |
 | 3. Rotate + crop | Rotate on an enlarged canvas so no corner is lost. Crop the rotated black box. | Only the integer digits go to the OCR. The red litres are dropped. |
-| 4. Read | **PP-OCR recogniser** (ONNX, via RapidOCR) on **4 test-time variants** of each crop, plus a **digit CNN** trained on our own meter bands | Two independent readers: when they agree the reading is almost always right; when they disagree a human checks. |
+| 4. Read | **PP-OCR recogniser** (ONNX, via RapidOCR) on **4 test-time variants** of each crop (original, trimmed top/bottom, contrast-boosted, trimmed sides) | The share of variants that agree is a cheap, honest signal of how sure the reading is. |
 | 5. Decide | `confidence = P(zone) × P(black block) × OCR score × agreement`. Readings ≥ 0.5 are auto-accepted, the rest go to review. A consumption check per meter (robust z-score, modulo-1000 rollover) also sends suspicious jumps to review. | Wrong readings are costly, so the system stays precise and a human handles the uncertain ones. |
 
 ## Results
@@ -38,12 +40,12 @@ Progression on the same 64 test photos (labels verified):
 | Axis-aligned YOLO crop, PP-OCR | 67 % | 39 % | 96 % | 170 ms |
 | + 2nd detection pass on the straightened image | 83 % | 50 % | 94 % | 240 ms |
 | Oriented-box detector (YOLOv8n-OBB) only | 81 % | 62 % | 95 % | 190 ms |
-| Hybrid: OBB + 2nd pass, keep the crop the OCR is most sure of | 84 % | 66 % | 95 % | 290 ms |
-| **+ digit CNN as a second reader (production)** | **88 %** | **67 %** | **98 %** | 320 ms |
+| **Hybrid: OBB + 2nd pass, keep the crop the OCR is most sure of (production)** | **84 %** | **66 %** | **95 %** | 290 ms |
+| Experiment, not shipped: + small digit CNN as a second reader | 88 % | 67 % | 98 % | 320 ms |
 
 The OBB detector (`models/yolo/orientation_obb.pt`) is a YOLOv8n-OBB fine-tuned on 164 crops I annotated with rotated polygons (black band / red band), with flips disabled (a mirror would put red on the left) and ±180° rotation augmentation. Validation mAP50 = 0.995, mAP50-95 = 0.87. None of the 70 test photos were in its training set (`scripts/train_obb.py`, `scripts/compare_modes.py`).
 
-The **digit CNN** (`models/digit_reader.pt`, 0.7 M parameters) reads the last 3 black digits directly from the straightened band. It was trained on 651 bands built from the team's crops with the project's labels (test photos excluded), using the same OBB + rotation code as production (`scripts/build_digit_dataset.py`, `scripts/train_digits.py`). It is used as a **second, independent reader**: when the CNN and the OCR agree (69 % of test photos) the reading is right 98 % of the time; when they disagree, the more confident one is kept and the confidence is cut so a human checks it.
+**Why there is no CNN in production.** A CNN that reads the raw photo needs far more data than we have (the ResNet18 tried in the team project reached ~1 %). Once the pipeline has isolated and straightened the digit band, the problem is much smaller, so I tried a small CNN (`models/digit_reader.pt`, 0.7 M parameters, 651 training bands) as a second reader. On the 64 test photos it fixed 3 readings, broke 1 and caught 1 wrong auto-accepted reading: +2 photos, which is within the noise of a test set this size, and on its own it is weaker than the OCR (75 % vs 84 %). It is kept in the repo (`use_digit_reader=True`, `scripts/train_digits.py`) and switched off. It becomes worth it once the human corrections collected by the review queue give it more training data.
 
 
 Main failure modes: digits caught mid-turn (e.g. 7↔8), heavy blur, and very small or dirty counters. Caveat: the eval photos come from the same pool the YOLO models were trained on, so the detection stages may look better here than on new meters. The OCR stage was never trained on this data.
@@ -92,6 +94,16 @@ Evaluate on your own labelled photos (`image_id,reading` CSV):
 python scripts/evaluate.py path/to/photos data/labels.csv
 ```
 
+## Deploy to Google Cloud Run (live demo)
+
+From Cloud Shell, in the repo:
+```bash
+gcloud builds submit --config cloudbuild.yaml --region=europe-west1
+gcloud run deploy meter-reader --image europe-west1-docker.pkg.dev/$GOOGLE_CLOUD_PROJECT/cloud-run-source-deploy/meter-reader \
+  --region europe-west1 --memory 2Gi --cpu 1 --cpu-boost --min-instances 1 --allow-unauthenticated
+```
+`cloudbuild.yaml` pulls the Python base image from Google's Docker Hub mirror (ECR Public rate-limits Google's builders).
+
 ## Deploy to AWS
 
 **CI/CD (recommended).** Every push to `main` runs the tests and builds the image (`ci.yml`), then builds, pushes to ECR and deploys to ECS Express Mode (`deploy.yml`). GitHub authenticates to AWS with **OIDC**, so no AWS keys are stored anywhere. One-time setup: an IAM OIDC provider for `token.actions.githubusercontent.com`, a role that only this repo's `main` branch can assume, and the repo variable `AWS_ROLE_ARN`. Manual runs: *Actions → deploy → Run workflow* with `deploy`, `status` or `destroy`.
@@ -118,7 +130,7 @@ tests/                         pipeline, API and anomaly tests
 ```
 
 ## Next steps
-1. **Close the loop.** Retrain the digit CNN on the exported human corrections (mid-turn digits are the main remaining error). Re-run `compare_modes.py` and ship only if accuracy at the same automation rate goes up.
+1. **Close the loop.** Use the exported human corrections to grow the training set, retrain the digit CNN on it (mid-turn digits are the main remaining error), re-run `compare_modes.py`, and switch it on only if accuracy at the same automation rate goes up clearly.
 2. Batch mode: an S3 upload event triggers an SQS queue and a worker, for the thousands of photos a utility receives each day.
 3. Authentication (Cognito) and per-agent audit trail. Meter-ID / GPS from the photo's EXIF.
 4. Drift monitoring: a CloudWatch metric on the automation rate, with an alarm when it drops.
