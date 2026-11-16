@@ -185,7 +185,7 @@ footer a{text-decoration:none}footer a:hover{color:var(--ink)}
         <div class="label">Accuracy on auto-accepted readings</div>
         <div class="n">95 %</div>
         <div class="dots" id="heroDots"></div>
-        <small>Measured on 64 labelled test photos.</small>
+        <small>Measured on 189 labelled meter photos.</small>
       </div>
     </div>
   </div>
@@ -208,10 +208,10 @@ footer a{text-decoration:none}footer a:hover{color:var(--ink)}
     <h2>Precise when sure,<br><em>honest when not.</em></h2>
     <div class="stats">
       <div class="stat"><div class="n">95<em>%</em></div><p>accuracy on the readings it accepts on its own.</p></div>
-      <div class="stat"><div class="n">~60<em>%</em></div><p>of photos handled with no human at all.</p></div>
+      <div class="stat"><div class="n">52<em>%</em></div><p>of photos handled with no human at all. The rest get a quick check.</p></div>
       <div class="stat"><div class="n">0.6<em>s</em></div><p>per photo on a single CPU, from upload to reading.</p></div>
     </div>
-    <p class="fine">Accuracy: 64 labelled test photos (small set: ±8 points). Automation: 66 % on those, 54 % on 151 other photos from the same challenge, so about 60 % overall. Expect less on meter types the models have never seen.</p>
+    <p class="fine">Measured on 189 labelled photos from the challenge. The confidence is the OCR score: at 0.78 and above, 95 % of readings are right. Expect fewer automatic readings on meter types the models have never seen.</p>
   </section>
 
   <footer>
@@ -261,8 +261,8 @@ async function send(f){
   catch(e){clearInterval(tick);clearTimeout(wake);$('#result').innerHTML=frame(`<div class="loading" style="color:var(--coral-ink)">Couldn't read this image: ${esc(e.message)}</div>`);return}
   clearInterval(tick);clearTimeout(wake);
   const pct=Math.round((d.confidence||0)*100);
-  // three tiers: auto (>= review threshold), likely (0.30 - threshold: right ~7 times in 10 on the test set), unsure (< 0.30)
-  const tier=d.status==='auto'?'auto':d.status==='failed'?'failed':((d.confidence||0)>=0.30?'likely':'review');
+  // three tiers: auto (>= review threshold 0.78: 95 % right), likely (0.60 - 0.78: ~6 in 10 right), unsure (< 0.60)
+  const tier=d.status==='auto'?'auto':d.status==='failed'?'failed':((d.confidence||0)>=0.60?'likely':'review');
   const status={auto:['auto','✓ Accepted automatically'],likely:['likely','Probably right · quick human check'],review:['review','⚑ Unsure · sent to a human'],failed:['failed','No meter found in this photo']}[tier];
   const meta=[`${Math.round(d.timings_ms?.total||0)} ms`];
   if(d.angle_deg!=null&&Math.abs(d.angle_deg)>8)meta.push(`straightened ${Math.round(Math.abs(d.angle_deg))}°`);

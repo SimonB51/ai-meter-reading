@@ -24,7 +24,7 @@ Agents still read water meters by hand and type in the numbers, which makes erro
 | 2. Orientation | **YOLOv8n-OBB** (rotated boxes, trained on my annotations) + the original **YOLOv8n #2** detect the *black* (m³) and *red* (litres) digit blocks | The black-to-red vector gives the meter's orientation, so photos taken sideways or upside down are fixed with one rotation (`atan2`). |
 | 3. Rotate + crop | Rotate on an enlarged canvas so no corner is lost. Crop the rotated black box. | Only the integer digits go to the OCR. The red litres are dropped. |
 | 4. Read | **PP-OCR recogniser** (ONNX, via RapidOCR) on **4 test-time variants** of each crop (original, trimmed top/bottom, contrast-boosted, trimmed sides) | The share of variants that agree is a cheap, honest signal of how sure the reading is. |
-| 5. Decide | `confidence = P(zone) × P(black block) × OCR score × agreement`. Readings ≥ 0.5 are auto-accepted, the rest go to review. A consumption check per meter (robust z-score, modulo-1000 rollover) also sends suspicious jumps to review. | Wrong readings are costly, so the system stays precise and a human handles the uncertain ones. |
+| 5. Decide | `confidence = OCR score` of the chosen crop (× 0.8 when no red drum confirms which way up the meter is). Readings ≥ 0.78 are auto-accepted, 0.60–0.78 are shown as "probably right" and checked, the rest go to review. A consumption check per meter (robust z-score, modulo-1000 rollover) also sends suspicious jumps to review. | Wrong readings are costly, so the system stays precise and a human handles the uncertain ones. |
 
 ## Results
 
@@ -48,7 +48,15 @@ The OBB detector (`models/yolo/orientation_obb.pt`) is a YOLOv8n-OBB fine-tuned 
 **Why there is no CNN in production.** A CNN that reads the raw photo needs far more data than we have (the ResNet18 tried in the team project reached ~1 %). Once the pipeline has isolated and straightened the digit band, the problem is much smaller, so I tried a small CNN (`models/digit_reader.pt`, 0.7 M parameters, 651 training bands) as a second reader. On the 64 test photos it fixed 3 readings, broke 1 and caught 1 wrong auto-accepted reading: +2 photos, which is within the noise of a test set this size, and on its own it is weaker than the OCR (75 % vs 84 %). It is kept in the repo (`use_digit_reader=True`, `scripts/train_digits.py`) and switched off. It becomes worth it once the human corrections collected by the review queue give it more training data.
 
 
-**Automation on unlabelled photos.** On the 151 other raw photos of the challenge (no labels, so only the automation rate can be measured), 54 % are accepted automatically, 24 % land in the 0.30–0.50 "probably right" band and 22 % below 0.30. Across all 215 photos that is about 60 % automated, a little below the 66 % of the test set.
+**Calibration on 189 labelled photos (production rule).** The tables above use the first confidence formula, `zone × box × OCR × agreement`, on the 64 test photos. Re-checking on all 189 labelled raw photos showed two problems: the product dragged clean photos under the threshold (four stages at 0.83 give 0.47), and on the 125 photos outside the test set its auto-accepted readings were only 83 % right, so the 95 % above was partly luck of a small test set. Using the OCR score alone separates right from wrong better (`scripts/calibrate.py`, `reports/calibration.csv`):
+
+| Rule | Auto-accepted | Precision on auto-accepted |
+|---|---|---|
+| Old: product of 4 scores ≥ 0.5 | 62 % | 87 % |
+| **New: OCR score ≥ 0.78 (production)** | **52 %** | **95 %** (test photos 97 %, other photos 93 %) |
+| OCR score ≥ 0.80 | 38 % | 97 % |
+
+The threshold was chosen on the same 189 photos, so treat 95 % as an estimate; the per-split numbers above show it holds on both halves.
 
 Main failure modes: digits caught mid-turn (e.g. 7↔8), heavy blur, and very small or dirty counters. Caveat: the eval photos come from the same pool the YOLO models were trained on, so the detection stages may look better here than on new meters. The OCR stage was never trained on this data.
 

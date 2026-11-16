@@ -17,5 +17,5 @@ aws ecs update-express-gateway-service --region "$REGION" --service-arn "$SERVIC
       {\"name\": \"S3_BUCKET\", \"value\": \"${BUCKET}\"},
       {\"name\": \"DDB_TABLE\", \"value\": \"${TABLE}\"},
       {\"name\": \"AWS_REGION\", \"value\": \"${REGION}\"},
-      {\"name\": \"REVIEW_THRESHOLD\", \"value\": \"${REVIEW_THRESHOLD:-0.5}\"}]}" \
+      {\"name\": \"REVIEW_THRESHOLD\", \"value\": \"${REVIEW_THRESHOLD:-0.78}\"}]}" \
   --query 'service.serviceArn' --output text

@@ -128,7 +128,7 @@ def _best_obox(result, cls_id: int) -> OBox | None:
 
 
 class MeterReader:
-    def __init__(self, models_dir: Path = MODELS, review_threshold: float = 0.5,
+    def __init__(self, models_dir: Path = MODELS, review_threshold: float = 0.78,
                  device: str = "cpu", mode: str | None = None,
                  use_digit_reader: bool = False):
         """mode: 'obb'    -> oriented-box detector (tight crop, any angle)
@@ -270,7 +270,12 @@ class MeterReader:
 
         det_conf = stage.get("black_obb", 0.5) if method.startswith("obb") else (black.conf if black else 0.5)
         ocr_value = digits[-3:] if len(digits) >= 3 else None
-        ocr_score = zone.conf * det_conf * ocr_conf * agree if ocr_value else 0.0
+        # Confidence = the OCR recogniser's own score for the chosen crop. Measured on 189 labelled photos,
+        # it separates right from wrong readings better than the old product
+        # zone x box x OCR x agreement, which dragged clean photos below the threshold
+        # (four stages at 0.83 each gave 0.47). At 0.78 it keeps ~95 % precision with ~53 % automation
+        # (scripts/calibrate.py). Detection and agreement scores stay in stage_conf for the UI and logs.
+        ocr_score = ocr_conf if ocr_value else 0.0
         value, conf = ocr_value, ocr_score
         if cnn is not None:
             cnn_score = zone.conf * stage.get("black_obb", 0.5) * cnn[1]

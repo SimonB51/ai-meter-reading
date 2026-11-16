@@ -25,7 +25,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger("meter")
 
 app = FastAPI(title="AI Meter Reading", version="1.0")
-reader = MeterReader(review_threshold=float(os.getenv("REVIEW_THRESHOLD", "0.5")))
+reader = MeterReader(review_threshold=float(os.getenv("REVIEW_THRESHOLD", "0.78")))
 store = make_storage()
 STATIC = Path(__file__).parent / "static"
 MAX_BYTES = 10 * 1024 * 1024

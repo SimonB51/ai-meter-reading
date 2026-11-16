@@ -90,7 +90,7 @@ CONTAINER=$(cat <<JSON
    {"name": "S3_BUCKET", "value": "${BUCKET}"},
    {"name": "DDB_TABLE", "value": "${TABLE}"},
    {"name": "AWS_REGION", "value": "${REGION}"},
-   {"name": "REVIEW_THRESHOLD", "value": "0.5"}]}
+   {"name": "REVIEW_THRESHOLD", "value": "0.78"}]}
 JSON
 )
 SERVICE_ARN=$(aws ecs create-express-gateway-service --region "$REGION" \
