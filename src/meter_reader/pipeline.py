@@ -128,7 +128,8 @@ def _best_obox(result, cls_id: int) -> OBox | None:
 
 class MeterReader:
     def __init__(self, models_dir: Path = MODELS, review_threshold: float = 0.5,
-                 device: str = "cpu", mode: str | None = None):
+                 device: str = "cpu", mode: str | None = None,
+                 use_digit_reader: bool = True):
         """mode: 'obb'    -> oriented-box detector (tight crop, any angle)
                  'yolo'   -> original axis-aligned detector + 2nd pass
                  'hybrid' -> read the crops of both and keep the most confident (default if OBB weights exist)"""
@@ -140,6 +141,11 @@ class MeterReader:
         obb_path = models_dir / "yolo" / "orientation_obb.pt"
         self.obb_model = YOLO(str(obb_path)) if obb_path.exists() else None
         self.mode = mode or ("hybrid" if self.obb_model else "yolo")
+        dr_path = models_dir / "digit_reader.pt"
+        self.digit_reader = None
+        if dr_path.exists() and use_digit_reader:
+            from .digit_reader import DigitReader
+            self.digit_reader = DigitReader(dr_path)
         self.ocr = RapidOCR()  # PP-OCR ONNX models ship inside the pip wheel
         self.review_threshold = review_threshold
         # NB: the weights' metadata says {0: 'rouge', 1: 'noir'} but the training labels
@@ -246,15 +252,33 @@ class MeterReader:
         method, digits, ocr_conf, agree = max(reads, key=lambda r: r[2] * r[3]) if reads else ("none", "", 0.0, 0.0)
         tm["ocr"] = (time.perf_counter() - t) * 1000
         stage["ocr"] = round(ocr_conf, 3); stage["ocr_agreement"] = agree
+
+        # second opinion: our CNN trained on meter drums, run on the oriented-box band
+        cnn = None
+        band = dict(candidates).get("obb")
+        if self.digit_reader is not None and band is not None and band.size:
+            cnn = self.digit_reader.read(band)
+            stage["cnn"] = cnn[0]; stage["cnn_conf"] = round(cnn[1], 3)
         tm["total"] = (time.perf_counter() - t0) * 1000
 
-        if len(digits) < 3:
+        det_conf = stage.get("black_obb", 0.5) if method == "obb" else (black.conf if black else 0.5)
+        ocr_value = digits[-3:] if len(digits) >= 3 else None
+        ocr_score = zone.conf * det_conf * ocr_conf * agree if ocr_value else 0.0
+        value, conf = ocr_value, ocr_score
+        if cnn is not None:
+            cnn_score = zone.conf * stage.get("black_obb", 0.5) * cnn[1]
+            if cnn[0] == ocr_value:                    # two independent readers agree
+                value, conf = ocr_value, 1 - (1 - ocr_score) * (1 - cnn_score)
+                method += "+cnn_agree"
+            elif cnn_score > ocr_score:               # disagree: trust the more confident, but flag doubt
+                value, conf = cnn[0], cnn_score * 0.6
+                method = "cnn"
+            else:
+                conf = ocr_score * 0.6
+        if value is None:
             return Reading(None, 0.0, "review", raw_ocr=digits, stage_conf=stage,
                            angle_deg=angle, method=method, timings_ms=tm,
                            error="fewer than 3 digits read")
-        value = digits[-3:]
-        det_conf = stage.get("black_obb", 0.5) if method == "obb" else (black.conf if black else 0.5)
-        conf = zone.conf * det_conf * ocr_conf * agree
         status = "auto" if conf >= self.review_threshold else "review"
         return Reading(value, round(conf, 4), status, raw_ocr=digits, stage_conf=stage,
                        angle_deg=None if angle is None else round(angle, 1),

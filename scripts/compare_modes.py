@@ -15,13 +15,15 @@ imgs = {p.stem: cv2.imread(str(p)) for p in photos}
 
 out = Path(__file__).resolve().parents[1] / "reports"; out.mkdir(exist_ok=True)
 summary = []
-for mode in ["yolo", "obb", "hybrid"]:
-    R = MeterReader(mode=mode)
+VARIANTS = {"yolo": dict(mode="yolo", use_digit_reader=False), "obb": dict(mode="obb", use_digit_reader=False),
+            "hybrid": dict(mode="hybrid", use_digit_reader=False), "hybrid+cnn": dict(mode="hybrid")}
+for mode, kw in VARIANTS.items():
+    R = MeterReader(**kw)
     rows = []
     for i, img in imgs.items():
         t = time.perf_counter(); r = R.read(img); ms = (time.perf_counter() - t) * 1000
         rows.append({"image_id": i, "truth": labels[i], "pred": r.value or "", "conf": r.confidence,
-                     "method": r.method, "correct": int(r.value == labels[i]), "ms": ms})
+                     "method": r.method, "cnn": r.stage_conf.get("cnn", ""), "correct": int(r.value == labels[i]), "ms": ms})
     with open(out / f"eval_{mode}.csv", "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0])); w.writeheader(); w.writerows(rows)
     n = len(rows); acc = sum(r["correct"] for r in rows) / n

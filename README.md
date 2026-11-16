@@ -21,7 +21,7 @@ Agents still read water meters by hand and type in the numbers, which makes erro
 | 1. Find the counter window | **YOLOv8n #1**, fine-tuned from COCO weights on a small set of photos hand-labelled in Roboflow, then retrained on its own confident predictions (**pseudo-labelling**, conf ≥ 0.3). Dataset: 795 meter photos. | Photos are taken from any distance and angle. Detection isolates the region of interest. |
 | 2. Orientation | **YOLOv8n-OBB** (rotated boxes, trained on my annotations) + the original **YOLOv8n #2** detect the *black* (m³) and *red* (litres) digit blocks | The black-to-red vector gives the meter's orientation, so photos taken sideways or upside down are fixed with one rotation (`atan2`). |
 | 3. Rotate + crop | Rotate on an enlarged canvas so no corner is lost. Crop the rotated black box. | Only the integer digits go to the OCR. The red litres are dropped. |
-| 4. Read | **PP-OCR recogniser** (ONNX, via RapidOCR), run on **4 test-time variants** of the crop | Each run gives a score. How often the 4 variants agree is a strong signal of correctness. |
+| 4. Read | **PP-OCR recogniser** (ONNX, via RapidOCR) on **4 test-time variants** of each crop, plus a **digit CNN** trained on our own meter bands | Two independent readers: when they agree the reading is almost always right; when they disagree a human checks. |
 | 5. Decide | `confidence = P(zone) × P(black block) × OCR score × agreement`. Readings ≥ 0.5 are auto-accepted, the rest go to review. A consumption check per meter (robust z-score, modulo-1000 rollover) also sends suspicious jumps to review. | Wrong readings are costly, so the system stays precise and a human handles the uncertain ones. |
 
 ## Results
@@ -38,9 +38,13 @@ Progression on the same 64 test photos (labels verified):
 | Axis-aligned YOLO crop, PP-OCR | 67 % | 39 % | 96 % | 170 ms |
 | + 2nd detection pass on the straightened image | 83 % | 50 % | 94 % | 240 ms |
 | Oriented-box detector (YOLOv8n-OBB) only | 81 % | 62 % | 95 % | 190 ms |
-| **Hybrid: OBB + 2nd pass, keep the crop the OCR is most sure of (production)** | **84 %** | **66 %** | **95 %** | 290 ms |
+| Hybrid: OBB + 2nd pass, keep the crop the OCR is most sure of | 84 % | 66 % | 95 % | 290 ms |
+| **+ digit CNN as a second reader (production)** | **88 %** | **67 %** | **98 %** | 320 ms |
 
 The OBB detector (`models/yolo/orientation_obb.pt`) is a YOLOv8n-OBB fine-tuned on 164 crops I annotated with rotated polygons (black band / red band), with flips disabled (a mirror would put red on the left) and ±180° rotation augmentation. Validation mAP50 = 0.995, mAP50-95 = 0.87. None of the 70 test photos were in its training set (`scripts/train_obb.py`, `scripts/compare_modes.py`).
+
+The **digit CNN** (`models/digit_reader.pt`, 0.7 M parameters) reads the last 3 black digits directly from the straightened band. It was trained on 651 bands built from the team's crops with the project's labels (test photos excluded), using the same OBB + rotation code as production (`scripts/build_digit_dataset.py`, `scripts/train_digits.py`). It is used as a **second, independent reader**: when the CNN and the OCR agree (69 % of test photos) the reading is right 98 % of the time; when they disagree, the more confident one is kept and the confidence is cut so a human checks it.
+
 
 Main failure modes: digits caught mid-turn (e.g. 7↔8), heavy blur, and very small or dirty counters. Caveat: the eval photos come from the same pool the YOLO models were trained on, so the detection stages may look better here than on new meters. The OCR stage was never trained on this data.
 
@@ -113,7 +117,7 @@ tests/                         pipeline, API and anomaly tests
 ```
 
 ## Next steps
-1. **Close the loop.** Fine-tune a small per-digit classifier on the exported corrections, which targets the mid-turn digit errors. Re-run `evaluate.py` and ship only if accuracy at the same automation rate goes up.
+1. **Close the loop.** Retrain the digit CNN on the exported human corrections (mid-turn digits are the main remaining error). Re-run `compare_modes.py` and ship only if accuracy at the same automation rate goes up.
 2. Batch mode: an S3 upload event triggers an SQS queue and a worker, for the thousands of photos a utility receives each day.
 3. Authentication (Cognito) and per-agent audit trail. Meter-ID / GPS from the photo's EXIF.
 4. Drift monitoring: a CloudWatch metric on the automation rate, with an alarm when it drops.
