@@ -51,6 +51,7 @@ class Reading:
     method: str = ""               # "black_box" | "legacy_fixed_crop"
     timings_ms: dict = field(default_factory=dict)
     error: str | None = None
+    band_jpg: str | None = None    # base64 JPEG of the straightened digits the readers saw (for the UI)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -219,16 +220,19 @@ class MeterReader:
                 stage["black_obb"] = round(ob.conf, 3)
                 if orr is not None:   # orientation from the black -> red vector
                     (bx, by), (rx, ry) = ob.center, orr.center
-                    a = math.degrees(math.atan2(ry - by, rx - bx))
-                else:                 # no red: use the long side of the black box (0/180 ambiguity left to OCR)
-                    p = ob.pts
+                    angles = [math.degrees(math.atan2(ry - by, rx - bx))]
+                else:                 # no red drum on this meter: the long side gives the angle up to 180 deg,
+                    p = ob.pts        # so we try both and let the readers decide which way up is legible
                     e = max([p[1] - p[0], p[2] - p[1]], key=lambda v: np.hypot(*v))
-                    a = math.degrees(math.atan2(e[1], e[0]))
-                rot, m = rotate_keep_all(ocrop, a)
-                q = np.hstack([ob.pts, np.ones((4, 1))]) @ m.T
-                x1, y1 = q.min(axis=0).astype(int); x2, y2 = q.max(axis=0).astype(int)
-                candidates.append(("obb", rot[max(0, y1):y2, max(0, x1):x2]))
-                angle = a
+                    a0 = math.degrees(math.atan2(e[1], e[0]))
+                    angles = [a0, a0 + 180]
+                    stage["orientation_unconfirmed"] = True
+                for k, a in enumerate(angles):
+                    rot, m = rotate_keep_all(ocrop, a)
+                    q = np.hstack([ob.pts, np.ones((4, 1))]) @ m.T
+                    x1, y1 = q.min(axis=0).astype(int); x2, y2 = q.max(axis=0).astype(int)
+                    candidates.append(("obb" if k == 0 else "obb_flipped", rot[max(0, y1):y2, max(0, x1):x2]))
+                angle = angles[0]
         if self.mode in ("yolo", "hybrid") and black and red:
             (bx, by), (rx, ry) = black.center, red.center
             angle = math.degrees(math.atan2(ry - by, rx - bx))
@@ -255,13 +259,14 @@ class MeterReader:
 
         # second opinion: our CNN trained on meter drums, run on the oriented-box band
         cnn = None
-        band = dict(candidates).get("obb")
+        cands = dict(candidates)
+        band = cands.get(method.split("+")[0]) if method.startswith("obb") else cands.get("obb")
         if self.digit_reader is not None and band is not None and band.size:
             cnn = self.digit_reader.read(band)
             stage["cnn"] = cnn[0]; stage["cnn_conf"] = round(cnn[1], 3)
         tm["total"] = (time.perf_counter() - t0) * 1000
 
-        det_conf = stage.get("black_obb", 0.5) if method == "obb" else (black.conf if black else 0.5)
+        det_conf = stage.get("black_obb", 0.5) if method.startswith("obb") else (black.conf if black else 0.5)
         ocr_value = digits[-3:] if len(digits) >= 3 else None
         ocr_score = zone.conf * det_conf * ocr_conf * agree if ocr_value else 0.0
         value, conf = ocr_value, ocr_score
@@ -275,14 +280,23 @@ class MeterReader:
                 method = "cnn"
             else:
                 conf = ocr_score * 0.6
+        if stage.get("orientation_unconfirmed"):
+            conf *= 0.8               # no red drum to confirm which way up the meter is
         if value is None:
             return Reading(None, 0.0, "review", raw_ocr=digits, stage_conf=stage,
                            angle_deg=angle, method=method, timings_ms=tm,
                            error="fewer than 3 digits read")
         status = "auto" if conf >= self.review_threshold else "review"
+        shown = band if method == "cnn" else cands.get(method.split("+")[0])
+        band_jpg = None
+        if shown is not None and shown.size:
+            import base64
+            s_ = 96 / max(1, shown.shape[0])
+            small = cv2.resize(shown, None, fx=s_, fy=s_) if s_ < 1 else shown
+            band_jpg = base64.b64encode(cv2.imencode(".jpg", small, [cv2.IMWRITE_JPEG_QUALITY, 85])[1]).decode()
         return Reading(value, round(conf, 4), status, raw_ocr=digits, stage_conf=stage,
                        angle_deg=None if angle is None else round(angle, 1),
-                       method=method, timings_ms={k: round(v, 1) for k, v in tm.items()})
+                       method=method, timings_ms={k: round(v, 1) for k, v in tm.items()}, band_jpg=band_jpg)
 
     def debug_images(self, img: np.ndarray) -> dict[str, np.ndarray]:
         """Intermediate images for the UI / README illustrations."""

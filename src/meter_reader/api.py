@@ -45,33 +45,55 @@ def index():
     return FileResponse(STATIC / "index.html")
 
 
+@app.get("/ops")
+def ops():
+    """Operations view: review queue + dashboard."""
+    return FileResponse(STATIC / "ops.html")
+
+
+SAMPLES = Path(os.getenv("SAMPLES_DIR", Path(__file__).resolve().parents[2] / "samples"))
+
+
+@app.get("/api/samples")
+def list_samples():
+    return sorted(p.name for p in SAMPLES.glob("*.jpg"))
+
+
+@app.get("/samples/{name}")
+def get_sample(name: str):
+    p = (SAMPLES / name).resolve()
+    if p.parent != SAMPLES.resolve() or not p.exists():
+        raise HTTPException(404)
+    return FileResponse(p, media_type="image/jpeg")
+
+
 @app.post("/api/readings")
-async def create_reading(file: UploadFile = File(...), meter_id: str = Form("demo-meter")):
+async def create_reading(file: UploadFile = File(...), meter_id: str | None = Form(None)):
     data = await file.read()
     if len(data) > MAX_BYTES:
         raise HTTPException(413, "image too large (10 MB max)")
     img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
     if img is None:
         raise HTTPException(400, "not an image")
-    # normalise size/format before storing (phones send 12 MP photos)
+    r = reader.read(img)                     # read at full resolution: digits can be small
+    # store a lighter copy (phones send 12 MP photos)
     s = 1280 / max(img.shape[:2])
     if s < 1:
         img = cv2.resize(img, None, fx=s, fy=s, interpolation=cv2.INTER_AREA)
-
-    r = reader.read(img)
     rid = new_id()
     key = f"{rid}.jpg"
     store.put_image(key, cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 90])[1].tobytes())
 
-    rec = {"id": rid, "meter_id": meter_id, "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-           "image_key": key, **{k: v for k, v in r.to_dict().items()}}
+    rec = {"id": rid, "meter_id": meter_id or "web-demo", "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+           "image_key": key, **{k: v for k, v in r.to_dict().items() if k != "band_jpg"}}
     rec["status"] = r.status
-    if r.value:
+    if r.value and meter_id:   # consumption check only makes sense for a known meter
         history = [x for x in store.list() if x["meter_id"] == meter_id]
         rec["consumption"], rec["anomaly"] = anomaly.check(r.value, history)
         if rec["anomaly"] and rec["status"] == "auto":
             rec["status"] = "review"   # suspicious consumption -> a human double-checks
     store.save(rec)
+    rec = {**rec, "band_jpg": r.band_jpg}     # returned to the page, not stored
     log.info("reading id=%s meter=%s value=%s conf=%.3f status=%s method=%s ms=%s",
              rid, meter_id, r.value, r.confidence, rec["status"], r.method, r.timings_ms.get("total"))
     return rec

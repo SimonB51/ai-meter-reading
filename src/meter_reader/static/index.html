@@ -2,154 +2,130 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AI Meter Reading</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Meter Reader · AI water-meter reading</title>
+<meta name="description" content="Upload a photo of a water meter, get the reading and a confidence score in under a second.">
 <style>
 :root{
-  --bg:#f5f4f0; --panel:#ffffff; --ink:#1b1d1f; --muted:#6b6f75; --line:#e3e1db;
-  --accent:#0f6b5c; --accent-ink:#ffffff; --warn:#b35c00; --bad:#b3261e; --good:#0f6b5c;
-  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --bg:#f6f5f1; --panel:#fff; --ink:#15171a; --muted:#666b72; --line:#e4e2dc;
+  --accent:#0f6b5c; --accent-soft:#e3f1ed; --warn:#a85400; --warn-soft:#fbeedd; --bad:#b3261e;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
 }
-@media (prefers-color-scheme: dark){:root{
-  --bg:#141517; --panel:#1d1f22; --ink:#ececea; --muted:#9a9ea4; --line:#2e3135;
-  --accent:#3fb39c; --accent-ink:#0d1412; --warn:#e3a04f; --bad:#ef7b72; --good:#3fb39c;}}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#121315; --panel:#1b1d20; --ink:#ececea; --muted:#9a9ea5; --line:#2c2f33;
+  --accent:#45b8a0; --accent-soft:#16302a; --warn:#e8a456; --warn-soft:#33260f; --bad:#ef7b72;}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
-header{display:flex;align-items:baseline;gap:16px;padding:20px 24px 0;max-width:1100px;margin:auto;flex-wrap:wrap}
-h1{font-size:20px;margin:0;letter-spacing:-.01em}
-header p{margin:0;color:var(--muted);font-size:13px}
-nav{display:flex;gap:4px;max-width:1100px;margin:16px auto 0;padding:0 24px;border-bottom:1px solid var(--line)}
-nav button{border:0;background:none;color:var(--muted);font:inherit;padding:10px 14px;cursor:pointer;border-bottom:2px solid transparent}
-nav button.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
-nav .badge{background:var(--warn);color:#fff;border-radius:9px;padding:0 6px;font-size:11px;margin-left:4px}
-main{max-width:1100px;margin:auto;padding:24px}
-section{display:none} section.on{display:block}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px}
-.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
-.drop{border:1.5px dashed var(--line);border-radius:10px;padding:36px;text-align:center;cursor:pointer;color:var(--muted)}
-.drop.hover{border-color:var(--accent);color:var(--ink)}
-label{font-size:13px;color:var(--muted)} input[type=text]{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
-.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:6px;padding:8px 14px;font:inherit;font-weight:600;cursor:pointer}
-.btn.ghost{background:none;color:var(--ink);border:1px solid var(--line)}
-.reading{font-family:var(--mono);font-size:56px;letter-spacing:.12em;line-height:1}
-.pill{display:inline-block;border-radius:99px;padding:2px 10px;font-size:12px;font-weight:600}
-.pill.auto,.pill.confirmed{background:color-mix(in srgb,var(--good) 15%,transparent);color:var(--good)}
-.pill.review{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
-.pill.failed,.pill.corrected{background:color-mix(in srgb,var(--bad) 15%,transparent);color:var(--bad)}
-.bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden} .bar>i{display:block;height:100%;background:var(--accent)}
-.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px} .kv span:nth-child(odd){color:var(--muted)}
-img.photo{width:100%;max-height:320px;object-fit:contain;background:#000;border-radius:8px}
-.stats{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:16px}
-.stat b{display:block;font-size:28px;font-variant-numeric:tabular-nums} .stat span{color:var(--muted);font-size:13px}
-table{width:100%;border-collapse:collapse;font-size:13px} th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line)} th{color:var(--muted);font-weight:500}
-td.mono{font-family:var(--mono)}
-.queue-item{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:16px;align-items:center}
-@media (max-width:640px){.queue-item{grid-template-columns:1fr}.reading{font-size:44px}}
-.muted{color:var(--muted)} .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:s 1s linear infinite}@keyframes s{to{transform:rotate(360deg)}}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:760px;margin:0 auto;padding:28px 16px 40px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:650;letter-spacing:-.01em}
+.brand i{width:28px;height:28px;border-radius:8px;background:var(--accent);display:grid;place-items:center;color:#fff;font:700 13px var(--mono);font-style:normal}
+h1{font-size:clamp(28px,6vw,40px);line-height:1.1;letter-spacing:-.02em;margin:34px 0 10px}
+.lead{color:var(--muted);margin:0 0 26px;font-size:17px}
+.drop{display:flex;flex-direction:column;align-items:center;gap:10px;padding:34px 16px;border:2px dashed var(--line);border-radius:16px;background:var(--panel);cursor:pointer;text-align:center;transition:.15s}
+.drop:hover,.drop.hover{border-color:var(--accent)}
+.btn{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:0;border-radius:999px;padding:13px 22px;font:600 16px system-ui;cursor:pointer}
+.drop small{color:var(--muted)}
+.samples-h{margin:26px 0 10px;color:var(--muted);font-size:14px}
+.samples{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
+.samples button{padding:0;border:2px solid transparent;border-radius:12px;overflow:hidden;cursor:pointer;background:var(--line);aspect-ratio:1}
+.samples button:hover,.samples button.on{border-color:var(--accent)}
+.samples img{width:100%;height:100%;object-fit:cover;display:block}
+#result{margin-top:26px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px}
+.row{display:flex;gap:18px;flex-wrap:wrap;align-items:stretch}
+.photo{flex:1 1 220px;max-width:100%;border-radius:12px;background:#000;object-fit:contain;max-height:260px}
+.out{flex:1 1 240px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.label{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.reading{font:700 clamp(48px,12vw,64px)/1 var(--mono);letter-spacing:.14em}
+.reading small{font-size:.35em;letter-spacing:0;color:var(--muted);font-weight:500;margin-left:6px}
+.pill{align-self:flex-start;border-radius:999px;padding:5px 12px;font-weight:600;font-size:14px}
+.pill.auto{background:var(--accent-soft);color:var(--accent)}
+.pill.review{background:var(--warn-soft);color:var(--warn)}
+.pill.failed{background:var(--warn-soft);color:var(--bad)}
+.bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden}.bar i{display:block;height:100%;background:var(--accent);transition:width .6s}
+.band{max-width:100%;height:44px;object-fit:contain;object-position:left;border-radius:6px;background:#000}
+.meta{color:var(--muted);font-size:14px}
+.spin{width:22px;height:22px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:s .8s linear infinite;display:inline-block;vertical-align:middle;margin-right:8px}@keyframes s{to{transform:rotate(360deg)}}
+.how{margin-top:38px;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.how div{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+.how b{display:block;font-size:14px;margin-bottom:4px}.how span{color:var(--muted);font-size:14px}
+.how em{font-style:normal;font:600 12px var(--mono);color:var(--accent)}
+footer{margin-top:36px;color:var(--muted);font-size:14px;display:flex;gap:18px;flex-wrap:wrap}
+footer a{color:inherit}
 </style>
 </head>
 <body>
-<header><h1>AI Meter Reading</h1><p>Photo of a water meter → reading, confidence, and a human check when the model is unsure.</p></header>
-<nav>
-  <button class="on" data-t="read">Read a meter</button>
-  <button data-t="review">Review queue <span class="badge" id="qcount" hidden></span></button>
-  <button data-t="dash">Dashboard</button>
-</nav>
-<main>
-<section id="read" class="on">
-  <div class="grid">
-    <div class="card">
-      <div class="row" style="margin-bottom:12px"><label for="meter">Meter ID</label><input id="meter" type="text" value="demo-meter"></div>
-      <div class="drop" id="drop">Drop a photo here or click to choose<input id="file" type="file" accept="image/*" hidden></div>
-      <p class="muted" style="font-size:13px;margin-bottom:0">The photo is stored, read by the pipeline (YOLO zone → YOLO orientation → OCR) and logged.</p>
-    </div>
-    <div class="card" id="result"><p class="muted">The reading will appear here.</p></div>
+<div class="wrap">
+  <div class="brand"><i>123</i>Meter Reader</div>
+
+  <h1>Read a water meter<br>from a photo.</h1>
+  <p class="lead">Upload any photo of a meter: straight, tilted or upside down. You get the reading in about a second, with a confidence score. When the model isn't sure, it says so and sends the photo to a human.</p>
+
+  <label class="drop" id="drop">
+    <span class="btn">📷&nbsp; Take or upload a photo</span>
+    <small>JPG or PNG · up to 10 MB · processed on AWS</small>
+    <input id="file" type="file" accept="image/*" hidden>
+  </label>
+
+  <div class="samples-h">No meter nearby? Tap one of these:</div>
+  <div class="samples" id="samples"></div>
+
+  <div id="result"></div>
+
+  <div class="how">
+    <div><em>01</em><b>Find the meter</b><span>A YOLO model locates the counter in the photo.</span></div>
+    <div><em>02</em><b>Straighten it</b><span>Rotated boxes find the black and red digits and give the angle.</span></div>
+    <div><em>03</em><b>Read it twice</b><span>An OCR model and a CNN trained on meters read the digits independently.</span></div>
+    <div><em>04</em><b>Know when to ask</b><span>When the two agree, the reading is accepted. When they don't, a human checks it.</span></div>
   </div>
-</section>
-<section id="review"><div id="queue"></div></section>
-<section id="dash">
-  <div class="stats" id="stats"></div>
-  <div class="card"><div class="row" style="justify-content:space-between;margin-bottom:8px"><b>Recent readings</b><a class="btn ghost" href="/api/export/corrections.csv">Export human labels (CSV)</a></div>
-  <div style="overflow-x:auto"><table id="tbl"></table></div></div>
-</section>
-</main>
+
+  <footer>
+    <a href="/ops">Operations view (review queue &amp; dashboard)</a>
+    <a href="https://github.com/SimonB51/ai-meter-reading" target="_blank" rel="noopener">Source code</a>
+    <span>Built by Simon Baudart</span>
+  </footer>
+</div>
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
-  document.querySelectorAll('nav button,section').forEach(e=>e.classList.remove('on'));
-  b.classList.add('on');$('#'+b.dataset.t).classList.add('on');
-  if(b.dataset.t==='review')loadQueue(); if(b.dataset.t==='dash')loadDash();
-});
 const drop=$('#drop'),file=$('#file');
-drop.onclick=()=>file.click();
 drop.ondragover=e=>{e.preventDefault();drop.classList.add('hover')};
 drop.ondragleave=()=>drop.classList.remove('hover');
-drop.ondrop=e=>{e.preventDefault();drop.classList.remove('hover');if(e.dataTransfer.files[0])send(e.dataTransfer.files[0])};
+drop.ondrop=e=>{e.preventDefault();drop.classList.remove('hover');e.dataTransfer.files[0]&&send(e.dataTransfer.files[0])};
 file.onchange=()=>file.files[0]&&send(file.files[0]);
 
-async function send(f){
-  $('#result').innerHTML='<p><span class="spin"></span> Reading…</p>';
-  const fd=new FormData();fd.append('file',f);fd.append('meter_id',$('#meter').value||'demo-meter');
-  const r=await fetch('/api/readings',{method:'POST',body:fd});
-  if(!r.ok){$('#result').innerHTML='<p style="color:var(--bad)">Error: '+esc((await r.json()).detail)+'</p>';return}
-  const d=await r.json();
-  const pct=Math.round(d.confidence*100);
-  $('#result').innerHTML=`
-    <div class="row" style="justify-content:space-between"><span class="pill ${d.status}">${d.status==='auto'?'accepted automatically':d.status==='review'?'sent to human review':'failed'}</span><span class="muted" style="font-size:13px">${Math.round(d.timings_ms?.total||0)} ms</span></div>
-    <div class="reading" style="margin:18px 0">${esc(d.value??'— — —')}</div>
-    <div class="muted" style="font-size:13px">confidence ${pct}%</div><div class="bar" style="margin:4px 0 16px"><i style="width:${pct}%"></i></div>
-    <div class="kv">
-      <span>OCR raw</span><span class="mono">${esc(d.raw_ocr||'—')}</span>
-      <span>rotation</span><span>${d.angle_deg??'—'}°</span>
-      <span>crop method</span><span>${esc(d.method||'—')}</span>
-      <span>stage scores</span><span>${esc(Object.entries(d.stage_conf||{}).map(([k,v])=>k+' '+v).join(' · '))}</span>
-      ${d.consumption!=null?`<span>consumption</span><span>${d.consumption} m³ since last reading</span>`:''}
-      ${d.anomaly?`<span>alert</span><span style="color:var(--warn)">${esc(d.anomaly.replaceAll('_',' '))}</span>`:''}
-      ${d.error?`<span>note</span><span>${esc(d.error)}</span>`:''}
-    </div>
-    <img class="photo" style="margin-top:16px" src="/api/readings/${d.id}/image">`;
-  refreshCount();
-}
-
-async function loadQueue(){
-  const q=await (await fetch('/api/readings?status=review')).json();
-  $('#queue').innerHTML=q.length?'':'<div class="card"><p class="muted">Nothing to review. Low-confidence readings land here.</p></div>';
-  q.forEach(d=>{
-    const el=document.createElement('div');el.className='card';el.style.marginBottom='12px';
-    el.innerHTML=`<div class="queue-item">
-      <img class="photo" src="/api/readings/${d.id}/image" loading="lazy">
-      <div>
-        <div class="muted" style="font-size:13px">${esc(d.meter_id)} · ${esc(d.created_at)}</div>
-        <div class="muted" style="font-size:13px;margin:8px 0 2px">model read (${Math.round(d.confidence*100)}%)</div>
-        <div class="reading" style="font-size:36px">${esc(d.value??'???')}</div>
-        ${d.anomaly?`<div style="color:var(--warn);font-size:13px">${esc(d.anomaly.replaceAll('_',' '))}</div>`:''}
-        <div class="row" style="margin-top:12px"><input type="text" maxlength="3" inputmode="numeric" size="4" value="${esc(d.value??'')}" style="font-family:var(--mono);font-size:18px;width:80px"><button class="btn">Save</button></div>
-      </div></div>`;
-    const inp=el.querySelector('input');
-    el.querySelector('button').onclick=async()=>{
-      const r=await fetch(`/api/readings/${d.id}/review`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:inp.value})});
-      if(r.ok){el.remove();refreshCount()}else{inp.style.borderColor='var(--bad)'}
-    };
-    $('#queue').append(el);
+fetch('/api/samples').then(r=>r.json()).then(list=>{
+  $('#samples').innerHTML=list.map(n=>`<button data-n="${esc(n)}" aria-label="Try sample ${esc(n)}"><img src="/samples/${esc(n)}" loading="lazy" alt=""></button>`).join('');
+  document.querySelectorAll('.samples button').forEach(b=>b.onclick=async()=>{
+    document.querySelectorAll('.samples button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+    const blob=await (await fetch('/samples/'+b.dataset.n)).blob();
+    send(new File([blob],b.dataset.n,{type:'image/jpeg'}));
   });
-}
+});
 
-async function loadDash(){
-  const s=await (await fetch('/api/stats')).json();
-  const f=v=>v==null?'—':Math.round(v*100)+'%';
-  $('#stats').innerHTML=[['readings',s.total],['automation rate',f(s.automation_rate)],['pending review',s.pending_review],['model accuracy (on reviewed)',f(s.model_accuracy_on_reviewed)],['consumption alerts',s.anomalies],['avg latency',s.avg_latency_ms==null?'—':Math.round(s.avg_latency_ms)+' ms']]
-    .map(([k,v])=>`<div class="card stat"><b>${v}</b><span>${k}</span></div>`).join('');
-  const rows=await (await fetch('/api/readings?limit=50')).json();
-  $('#tbl').innerHTML='<tr><th>time</th><th>meter</th><th>model</th><th>human</th><th>confidence</th><th>status</th><th>consumption</th></tr>'+
-    rows.map(d=>`<tr><td>${esc(d.created_at)}</td><td>${esc(d.meter_id)}</td><td class="mono">${esc(d.value??'—')}</td><td class="mono">${esc(d.corrected_value??'')}</td><td>${Math.round(d.confidence*100)}%</td><td><span class="pill ${d.status}">${d.status}</span></td><td>${d.consumption??''}${d.anomaly?' ⚠':''}</td></tr>`).join('');
+async function send(f){
+  const url=URL.createObjectURL(f);
+  $('#result').innerHTML=`<div class="card"><span class="spin"></span>Reading the meter…</div>`;
+  $('#result').scrollIntoView({behavior:'smooth',block:'nearest'});
+  const fd=new FormData();fd.append('file',f);
+  let d;
+  try{const r=await fetch('/api/readings',{method:'POST',body:fd});d=await r.json();if(!r.ok)throw new Error(d.detail||'error');}
+  catch(e){$('#result').innerHTML=`<div class="card" style="color:var(--bad)">Couldn't read this image: ${esc(e.message)}</div>`;return}
+  const pct=Math.round((d.confidence||0)*100);
+  const status={auto:['auto','✓ Accepted automatically'],review:['review','⚑ Sent to a human: the model isn\'t sure'],failed:['failed','No meter found in this photo']}[d.status]||['review',d.status];
+  const rot=d.angle_deg!=null&&Math.abs(d.angle_deg)>8?` · photo straightened by ${Math.round(Math.abs(d.angle_deg))}°`:'';
+  $('#result').innerHTML=`<div class="card"><div class="row">
+    <img class="photo" src="${url}" alt="your photo">
+    <div class="out">
+      <div><div class="label">Reading (last 3 digits, m³)</div>
+      <div class="reading">${esc(d.value??'— — —')}</div></div>
+      <span class="pill ${status[0]}">${status[1]}</span>
+      <div><div class="label" style="margin-bottom:4px">Confidence ${pct}%</div><div class="bar"><i style="width:0%"></i></div></div>
+      ${d.band_jpg?`<div><div class="label" style="margin-bottom:4px">What the model read</div><img class="band" src="data:image/jpeg;base64,${d.band_jpg}" alt="straightened digits"></div>`:''}
+      <div class="meta">${Math.round(d.timings_ms?.total||0)} ms${rot}</div>
+    </div></div></div>`;
+  requestAnimationFrame(()=>{const i=$('#result .bar i');if(i)i.style.width=pct+'%'});
 }
-async function refreshCount(){
-  const q=await (await fetch('/api/readings?status=review')).json();
-  const b=$('#qcount');b.hidden=!q.length;b.textContent=q.length;
-}
-refreshCount();
 </script>
 </body>
 </html>

@@ -19,6 +19,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY models/ models/
 COPY src/ src/
+COPY samples/ samples/
 
 # warm-up: loads the 3 models once at build time so a broken image fails here, not in prod
 RUN python -c "import sys; sys.path.insert(0,'src'); from meter_reader import MeterReader; MeterReader()"
