@@ -1,5 +1,9 @@
 # ---- AI Meter Reading API: CPU inference container (App Runner / ECS / any Docker host) ----
-FROM public.ecr.aws/docker/library/python:3.12-slim
+# Base image is a build arg: ECR Public by default (works from AWS / GitHub Actions);
+# on Google Cloud Build, ECR Public rate-limits anonymous pulls, so pass
+# --build-arg BASE_IMAGE=mirror.gcr.io/library/python:3.12-slim (see cloudbuild.yaml).
+ARG BASE_IMAGE=public.ecr.aws/docker/library/python:3.12-slim
+FROM ${BASE_IMAGE}
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
     YOLO_OFFLINE=1 YOLO_CONFIG_DIR=/tmp/ultralytics \
