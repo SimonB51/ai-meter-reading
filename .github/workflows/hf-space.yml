@@ -1,11 +1,10 @@
 name: hf-space
 # Mirrors the app to a Hugging Face Space (free CPU, public HTTPS URL) while AWS is not available.
 # One-time setup: repo secret HF_TOKEN (write token) + repo variable HF_SPACE (e.g. SimonB51/meter-reader).
+# Manual only: since mid-2026 new free HF accounts cannot create Docker Spaces (402), so this
+# needs a paid HF plan. Kept for reference; the live demo runs on Google Cloud Run / AWS instead.
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths: ["src/**", "models/**", "samples/**", "Dockerfile", "requirements.txt"]
 
 jobs:
   sync:
