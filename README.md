@@ -19,7 +19,7 @@ Agents still read water meters by hand and type in the numbers, which makes erro
 | Stage | Model / method | Why |
 |---|---|---|
 | 1. Find the counter window | **YOLOv8n #1**, fine-tuned from COCO weights on a small set of photos hand-labelled in Roboflow, then retrained on its own confident predictions (**pseudo-labelling**, conf ≥ 0.3). Dataset: 795 meter photos. | Photos are taken from any distance and angle. Detection isolates the region of interest. |
-| 2. Orientation | **YOLOv8n #2** detects the *black* (m³) and *red* (litres) digit blocks | The black-to-red vector gives the meter's orientation, so photos taken sideways or upside down are fixed with one rotation (`atan2`). |
+| 2. Orientation | **YOLOv8n-OBB** (rotated boxes, trained on my annotations) + the original **YOLOv8n #2** detect the *black* (m³) and *red* (litres) digit blocks | The black-to-red vector gives the meter's orientation, so photos taken sideways or upside down are fixed with one rotation (`atan2`). |
 | 3. Rotate + crop | Rotate on an enlarged canvas so no corner is lost. Crop the rotated black box. | Only the integer digits go to the OCR. The red litres are dropped. |
 | 4. Read | **PP-OCR recogniser** (ONNX, via RapidOCR), run on **4 test-time variants** of the crop | Each run gives a score. How often the 4 variants agree is a strong signal of correctness. |
 | 5. Decide | `confidence = P(zone) × P(black block) × OCR score × agreement`. Readings ≥ 0.5 are auto-accepted, the rest go to review. A consumption check per meter (robust z-score, modulo-1000 rollover) also sends suspicious jumps to review. | Wrong readings are costly, so the system stays precise and a human handles the uncertain ones. |
@@ -30,12 +30,17 @@ Tested on 70 labelled photos the OCR never saw. 6 of those labels contradict the
 
 ![trade-off](docs/img/threshold_tradeoff.png)
 
-| | value |
-|---|---|
-| End-to-end exact match, last 3 digits, no threshold | **67 %** (61 % counting the 6 bad labels) |
-| **At threshold 0.5** | **39 % of readings auto-accepted at 96 % accuracy**. The rest go to a human. |
-| At threshold 0.3 | 62 % auto-accepted at 88 % accuracy |
-| Latency | ~170 ms per photo on 1 CPU core (median) |
+Progression on the same 64 test photos (labels verified):
+
+| Version | Exact match | Auto-accepted at threshold 0.5 | Accuracy on auto-accepted | Median latency (CPU) |
+|---|---|---|---|---|
+| Colab version rebuilt as-is (EasyOCR, first 30 photos) | ≈13 % | – | – | – |
+| Axis-aligned YOLO crop, PP-OCR | 67 % | 39 % | 96 % | 170 ms |
+| + 2nd detection pass on the straightened image | 83 % | 50 % | 94 % | 240 ms |
+| Oriented-box detector (YOLOv8n-OBB) only | 81 % | 62 % | 95 % | 190 ms |
+| **Hybrid: OBB + 2nd pass, keep the crop the OCR is most sure of (production)** | **84 %** | **66 %** | **95 %** | 290 ms |
+
+The OBB detector (`models/yolo/orientation_obb.pt`) is a YOLOv8n-OBB fine-tuned on 164 crops I annotated with rotated polygons (black band / red band), with flips disabled (a mirror would put red on the left) and ±180° rotation augmentation. Validation mAP50 = 0.995, mAP50-95 = 0.87. None of the 70 test photos were in its training set (`scripts/train_obb.py`, `scripts/compare_modes.py`).
 
 Main failure modes: digits caught mid-turn (e.g. 7↔8), heavy blur, and very small or dirty counters. Caveat: the eval photos come from the same pool the YOLO models were trained on, so the detection stages may look better here than on new meters. The OCR stage was never trained on this data.
 
@@ -43,6 +48,7 @@ Main failure modes: digits caught mid-turn (e.g. 7↔8), heavy blur, and very sm
 - The orientation weights store their class names swapped (`{0:'rouge', 1:'noir'}`) while the labels were written with `noir=0`. Using the names silently turned images upside down. The fix uses the class ids, checked by eye.
 - A fixed crop `img[83:173, 18:238]` plus red-pixel cutting was replaced by a crop on the detected black box after rotation.
 - EasyOCR (≈13 % here) was replaced by the PP-OCR recogniser with test-time augmentation (≈60 %+). The ResNet18 / 3-head CNN tried before reached ~1 %.
+- The axis-aligned orientation boxes were loose on tilted meters (they swallowed background and red digits). I annotated 164 crops with rotated polygons and trained an oriented-box (OBB) detector: tight crops at any angle, +16 points of automation.
 - Validation was done on the training set. It now uses a separate labelled evaluation (`scripts/evaluate.py`).
 
 ## Architecture (AWS)

@@ -10,3 +10,5 @@ infra/.service_arn
 *.log
 .env
 pictures_index.txt
+runs/
+runs_obb/

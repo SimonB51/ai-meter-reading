@@ -1,0 +1,81 @@
+03e8fc  truth=719  pred=719  conf=0.59  black_box_2nd_pass  raw=00719
+049234  truth=860  pred=860  conf=0.39  black_box_2nd_pass  raw=00860
+049ea9  truth=690  pred=690  conf=0.60  black_box_2nd_pass  raw=00690
+0507e2  truth=871  pred=871  conf=0.68  black_box_2nd_pass  raw=00871
+0530c9  truth=727  pred=427  conf=0.21  black_box_2nd_pass  raw=00427
+05a950  truth=844  pred=844  conf=0.48  black_box_2nd_pass  raw=00844
+05e971  truth=186  pred=186  conf=0.64  black_box_2nd_pass  raw=00186
+066aaa  truth=879  pred=879  conf=0.51  black_box  raw=0879
+08fd32  truth=587  pred=587  conf=0.60  black_box  raw=00587
+095078  truth=969  pred=969  conf=0.25  black_box_2nd_pass  raw=0969
+0955fd  truth=988  pred=None  conf=0.00  black_box  raw=
+0af124  truth=296  pred=296  conf=0.54  black_box_2nd_pass  raw=00296
+0c429f  truth=708  pred=708  conf=0.10  black_box_2nd_pass  raw=00708
+0c5ec4  truth=697  pred=697  conf=0.61  black_box  raw=00697
+0cee7a  truth=616  pred=616  conf=0.59  black_box_2nd_pass  raw=00616
+0d1801  truth=758  pred=758  conf=0.27  black_box  raw=0758
+0da303  truth=679  pred=679  conf=0.38  black_box_2nd_pass  raw=1679
+10efaf  truth=770  pred=770  conf=0.56  black_box_2nd_pass  raw=0770
+115889  truth=691  pred=691  conf=0.34  black_box_2nd_pass  raw=05691
+11eeaa  truth=086  pred=086  conf=0.46  black_box_2nd_pass  raw=00086
+12f3ce  truth=819  pred=819  conf=0.46  black_box_2nd_pass  raw=0819
+1437de  truth=969  pred=969  conf=0.65  black_box_2nd_pass  raw=60969
+14e784  truth=878  pred=878  conf=0.66  black_box_2nd_pass  raw=50878
+15e656  truth=813  pred=813  conf=0.37  black_box_2nd_pass  raw=40813
+16d06c  truth=839  pred=839  conf=0.53  black_box  raw=00839
+1765dd  truth=583  pred=583  conf=0.26  black_box_2nd_pass  raw=00583
+17a888  truth=586  pred=586  conf=0.62  black_box  raw=00586
+180a51  truth=749  pred=749  conf=0.29  black_box_2nd_pass  raw=00749
+19d49d  truth=889  pred=770  conf=0.55  black_box  raw=0770
+19dfc7  truth=429  pred=529  conf=0.43  black_box_2nd_pass  raw=00529
+1a17b2  truth=878  pred=878  conf=0.15  black_box_2nd_pass  raw=0878
+1a3c33  truth=776  pred=776  conf=0.47  black_box_2nd_pass  raw=00776
+1a5854  truth=765  pred=755  conf=0.22  black_box_2nd_pass  raw=00755
+1b4fe1  truth=636  pred=636  conf=0.39  black_box_2nd_pass  raw=180636
+1b79dc  truth=828  pred=828  conf=0.37  black_box  raw=1828
+1ba5a7  truth=146  pred=176  conf=0.21  black_box_2nd_pass  raw=57176
+1ec531  truth=926  pred=926  conf=0.65  black_box  raw=00926
+20215d  truth=698  pred=189  conf=0.57  black_box_2nd_pass  raw=01189
+22d4fa  truth=245  pred=245  conf=0.45  black_box_2nd_pass  raw=00245
+23ca1c  truth=977  pred=499  conf=0.14  black_box_2nd_pass  raw=00499
+240068  truth=596  pred=396  conf=0.42  black_box  raw=00396
+2507d9  truth=819  pred=766  conf=0.58  black_box_2nd_pass  raw=00766
+25a53d  truth=613  pred=613  conf=0.60  black_box_2nd_pass  raw=00613
+27044e  truth=975  pred=975  conf=0.59  black_box_2nd_pass  raw=00975
+2766e2  truth=866  pred=866  conf=0.64  black_box_2nd_pass  raw=00866
+291d75  truth=779  pred=779  conf=0.50  black_box  raw=60779
+29b363  truth=639  pred=669  conf=0.10  black_box_2nd_pass  raw=669
+29f796  truth=961  pred=087  conf=0.54  black_box_2nd_pass  raw=0087
+2ab46d  truth=967  pred=967  conf=0.64  black_box_2nd_pass  raw=00967
+2b69d9  truth=566  pred=566  conf=0.45  black_box_2nd_pass  raw=00566
+2cf302  truth=784  pred=784  conf=0.61  black_box_2nd_pass  raw=00784
+2d9383  truth=182  pred=182  conf=0.09  black_box_2nd_pass  raw=07182
+309363  truth=978  pred=492  conf=0.44  black_box  raw=00492
+316c0e  truth=883  pred=883  conf=0.65  black_box  raw=00883
+32904d  truth=435  pred=435  conf=0.28  black_box_2nd_pass  raw=00435
+32e454  truth=045  pred=045  conf=0.68  black_box_2nd_pass  raw=00045
+3385f1  truth=872  pred=872  conf=0.58  black_box_2nd_pass  raw=06872
+346f75  truth=059  pred=039  conf=0.54  black_box_2nd_pass  raw=00039
+35af5b  truth=592  pred=392  conf=0.54  black_box_2nd_pass  raw=50392
+3757e2  truth=767  pred=767  conf=0.54  black_box  raw=00767
+37dbdf  truth=692  pred=692  conf=0.63  black_box  raw=00692
+3af34b  truth=094  pred=094  conf=0.60  black_box_2nd_pass  raw=00094
+3b0b1f  truth=634  pred=634  conf=0.53  black_box_2nd_pass  raw=0634
+3e7092  truth=717  pred=717  conf=0.45  black_box_2nd_pass  raw=00717
+419611  truth=621  pred=621  conf=0.56  black_box_2nd_pass  raw=00621
+425907  truth=840  pred=840  conf=0.23  black_box_2nd_pass  raw=00840
+42b0c6  truth=572  pred=572  conf=0.34  black_box_2nd_pass  raw=00572
+43db92  truth=748  pred=750  conf=0.49  black_box_2nd_pass  raw=0750
+45eaf0  truth=841  pred=840  conf=0.49  black_box_2nd_pass  raw=0840
+4d5e50  truth=791  pred=791  conf=0.57  black_box_2nd_pass  raw=0791
+
+N=70  exact-match accuracy (last 3 digits) = 75.7%
+threshold  automated  accuracy_on_automated
+  0.0        98.6%      76.8%
+  0.3        78.6%      80.0%
+  0.4        68.6%      77.1%
+  0.5        51.4%      83.3%
+  0.6        20.0%     100.0%
+  0.7         0.0%       nan%
+  0.8         0.0%       nan%
+  0.9         0.0%       nan%

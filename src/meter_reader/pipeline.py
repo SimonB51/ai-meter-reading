@@ -103,14 +103,43 @@ def cut_red_columns(img: np.ndarray) -> np.ndarray:
     return img[:, : cols[0]] if len(cols) else img
 
 
+@dataclass
+class OBox:
+    """Oriented box: 4 corners (x, y) in image pixels + confidence."""
+    pts: np.ndarray
+    conf: float
+
+    @property
+    def center(self) -> tuple[float, float]:
+        c = self.pts.mean(axis=0)
+        return float(c[0]), float(c[1])
+
+
+def _best_obox(result, cls_id: int) -> OBox | None:
+    obb = result.obb
+    if obb is None or len(obb) == 0:
+        return None
+    best = None
+    for pts, c, k in zip(obb.xyxyxyxy.cpu().numpy(), obb.conf.cpu().numpy(), obb.cls.cpu().numpy()):
+        if int(k) == cls_id and (best is None or c > best.conf):
+            best = OBox(pts.astype(float), float(c))
+    return best
+
+
 class MeterReader:
     def __init__(self, models_dir: Path = MODELS, review_threshold: float = 0.5,
-                 device: str = "cpu"):
+                 device: str = "cpu", mode: str | None = None):
+        """mode: 'obb'    -> oriented-box detector (tight crop, any angle)
+                 'yolo'   -> original axis-aligned detector + 2nd pass
+                 'hybrid' -> read the crops of both and keep the most confident (default if OBB weights exist)"""
         from ultralytics import YOLO
         from rapidocr_onnxruntime import RapidOCR
 
         self.zone_model = YOLO(str(models_dir / "yolo" / "zone_detector.pt"))
         self.orient_model = YOLO(str(models_dir / "yolo" / "orientation_detector.pt"))
+        obb_path = models_dir / "yolo" / "orientation_obb.pt"
+        self.obb_model = YOLO(str(obb_path)) if obb_path.exists() else None
+        self.mode = mode or ("hybrid" if self.obb_model else "yolo")
         self.ocr = RapidOCR()  # PP-OCR ONNX models ship inside the pip wheel
         self.review_threshold = review_threshold
         # NB: the weights' metadata says {0: 'rouge', 1: 'noir'} but the training labels
@@ -126,6 +155,10 @@ class MeterReader:
     def detect_blocks(self, crop: np.ndarray) -> tuple[Box | None, Box | None]:
         r = self.orient_model.predict(crop, conf=0.25, verbose=False, device="cpu")[0]
         return _best_box(r, self.BLACK), _best_box(r, self.RED)
+
+    def detect_oblocks(self, crop: np.ndarray) -> tuple[OBox | None, OBox | None]:
+        r = self.obb_model.predict(crop, conf=0.25, verbose=False, device="cpu", imgsz=416)[0]
+        return _best_obox(r, 0), _best_obox(r, 1)   # data.yaml: 0 = noir, 1 = rouge
 
     @staticmethod
     def _variants(img: np.ndarray):
@@ -168,21 +201,50 @@ class MeterReader:
                  "red": round(red.conf, 3) if red else 0.0}
 
         angle = None
-        if black and red:
+        candidates: list[tuple[str, np.ndarray]] = []
+        if self.mode in ("obb", "hybrid") and self.obb_model is not None:
+            # take the zone with a margin from the full photo: on tilted meters the
+            # black band's corners often stick out of YOLO #1's axis-aligned box
+            mx, my = int(0.12 * (zone.x2 - zone.x1)), int(0.12 * (zone.y2 - zone.y1))
+            ocrop = img[max(0, int(zone.y1) - my):min(h, int(zone.y2) + my),
+                        max(0, int(zone.x1) - mx):min(w, int(zone.x2) + mx)]
+            ob, orr = self.detect_oblocks(ocrop)
+            if ob is not None:
+                stage["black_obb"] = round(ob.conf, 3)
+                if orr is not None:   # orientation from the black -> red vector
+                    (bx, by), (rx, ry) = ob.center, orr.center
+                    a = math.degrees(math.atan2(ry - by, rx - bx))
+                else:                 # no red: use the long side of the black box (0/180 ambiguity left to OCR)
+                    p = ob.pts
+                    e = max([p[1] - p[0], p[2] - p[1]], key=lambda v: np.hypot(*v))
+                    a = math.degrees(math.atan2(e[1], e[0]))
+                rot, m = rotate_keep_all(ocrop, a)
+                q = np.hstack([ob.pts, np.ones((4, 1))]) @ m.T
+                x1, y1 = q.min(axis=0).astype(int); x2, y2 = q.max(axis=0).astype(int)
+                candidates.append(("obb", rot[max(0, y1):y2, max(0, x1):x2]))
+                angle = a
+        if self.mode in ("yolo", "hybrid") and black and red:
             (bx, by), (rx, ry) = black.center, red.center
             angle = math.degrees(math.atan2(ry - by, rx - bx))
             rot, m = rotate_keep_all(crop, angle)
+            # candidate A: the black box detected before rotation, carried through the rotation
             x1, y1, x2, y2 = transform_box(black, m)
-            digits_img = rot[max(0, y1):y2, max(0, x1):x2]   # tight crop works best for OCR
-            method = "black_box"
-        else:
+            candidates.append(("black_box", rot[max(0, y1):y2, max(0, x1):x2]))
+            # candidate B: re-detect on the straightened image -> tighter box when the meter was tilted
+            black2, _ = self.detect_blocks(rot)
+            if black2:
+                candidates.append(("black_box_2nd_pass",
+                                   rot[int(black2.y1):int(black2.y2), int(black2.x1):int(black2.x2)]))
+        if not candidates:
             # fallback = original notebook logic: fixed crop on a 256x256 resize, then cut red
             rs = cv2.resize(crop, (256, 256))
-            digits_img = cut_red_columns(rs[83:173, 18:238])
-            method = "legacy_fixed_crop"
+            candidates.append(("legacy_fixed_crop", cut_red_columns(rs[83:173, 18:238])))
 
         t = time.perf_counter()
-        digits, ocr_conf, agree = self.read_digits(digits_img); tm["ocr"] = (time.perf_counter() - t) * 1000
+        # read every candidate crop, keep the one the OCR is most sure about
+        reads = [(name, *self.read_digits(im)) for name, im in candidates if im.size]
+        method, digits, ocr_conf, agree = max(reads, key=lambda r: r[2] * r[3]) if reads else ("none", "", 0.0, 0.0)
+        tm["ocr"] = (time.perf_counter() - t) * 1000
         stage["ocr"] = round(ocr_conf, 3); stage["ocr_agreement"] = agree
         tm["total"] = (time.perf_counter() - t0) * 1000
 
@@ -191,7 +253,8 @@ class MeterReader:
                            angle_deg=angle, method=method, timings_ms=tm,
                            error="fewer than 3 digits read")
         value = digits[-3:]
-        conf = zone.conf * (black.conf if black else 0.5) * ocr_conf * agree
+        det_conf = stage.get("black_obb", 0.5) if method == "obb" else (black.conf if black else 0.5)
+        conf = zone.conf * det_conf * ocr_conf * agree
         status = "auto" if conf >= self.review_threshold else "review"
         return Reading(value, round(conf, 4), status, raw_ocr=digits, stage_conf=stage,
                        angle_deg=None if angle is None else round(angle, 1),
