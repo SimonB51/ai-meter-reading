@@ -12,7 +12,7 @@
 :root{
   --bg:#f1eee8; --card:#ffffff; --ink:#151515; --muted:#7b776f; --line:#e5e1d9;
   --coral:#e8705f; --coral-soft:#fbe4de; --coral-ink:#c4503f;
-  --mint:#dcf0e4; --mint-ink:#1f7a4d;
+  --mint:#dcf0e4; --mint-ink:#1f7a4d; --amber:#fcefcf; --amber-ink:#9a6400;
   --lav:#ece6f7; --sun:#fbefc4; --sky:#dfeef7; --rose:#f9e1ea;
   --shadow:0 1px 2px rgba(20,20,20,.04),0 8px 24px rgba(20,20,20,.06);
   --sans:"Inter Tight",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
@@ -87,6 +87,8 @@ h1 em,h2 em{font-family:var(--serif);font-style:italic;font-weight:400;color:var
 .pill{align-self:flex-start;display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:7px 14px;font-weight:700;font-size:14px}
 .pill.auto{background:var(--mint);color:var(--mint-ink)}
 .pill.review{background:var(--coral-soft);color:var(--coral-ink)}
+.pill.likely{background:var(--amber);color:var(--amber-ink)}
+.reading.likely .q{color:#e0a92e;font-size:.5em;vertical-align:.7em}
 .pill.failed{background:#eee;color:#555}
 .conf .dots i{width:12px;height:12px}
 .band{display:block;max-width:100%;height:46px;object-fit:contain;object-position:left;border-radius:10px;background:#111;margin-top:6px}
@@ -259,7 +261,9 @@ async function send(f){
   catch(e){clearInterval(tick);clearTimeout(wake);$('#result').innerHTML=frame(`<div class="loading" style="color:var(--coral-ink)">Couldn't read this image: ${esc(e.message)}</div>`);return}
   clearInterval(tick);clearTimeout(wake);
   const pct=Math.round((d.confidence||0)*100);
-  const status={auto:['auto','✓ Accepted automatically'],review:['review','⚑ Sent to a human: the model isn\'t sure'],failed:['failed','No meter found in this photo']}[d.status]||['review',d.status];
+  // three tiers: auto (>= review threshold), likely (0.30 - threshold: right ~7 times in 10 on the test set), unsure (< 0.30)
+  const tier=d.status==='auto'?'auto':d.status==='failed'?'failed':((d.confidence||0)>=0.30?'likely':'review');
+  const status={auto:['auto','✓ Accepted automatically'],likely:['likely','Probably right · quick human check'],review:['review','⚑ Unsure · sent to a human'],failed:['failed','No meter found in this photo']}[tier];
   const meta=[`${Math.round(d.timings_ms?.total||0)} ms`];
   if(d.angle_deg!=null&&Math.abs(d.angle_deg)>8)meta.push(`straightened ${Math.round(Math.abs(d.angle_deg))}°`);
   if(d.stage_conf?.ocr_agreement===1)meta.push('4 of 4 views agree');
@@ -267,7 +271,7 @@ async function send(f){
     <img class="photo" src="${url}" alt="your photo">
     <div class="out">
       <div><div class="label">Reading · last 3 digits</div>
-      <div class="reading${d.status==='auto'?'':' unsure'}">${esc(d.value??'———')}${d.status==='auto'?'':'<span class="q">?</span>'}<small>m³</small></div>${d.status==='review'?'<div class="label" style="margin-top:8px;letter-spacing:.06em;text-transform:none;font-size:13px">Best guess · a person confirms or corrects it</div>':''}</div>
+      <div class="reading${tier==='review'?' unsure':tier==='likely'?' likely':''}">${esc(d.value??'———')}${tier==='auto'||tier==='failed'?'':'<span class="q">?</span>'}<small>m³</small></div>${tier==='likely'?'<div class="label" style="margin-top:8px;letter-spacing:.06em;text-transform:none;font-size:13px">Likely reading · one click for a person to confirm</div>':tier==='review'?'<div class="label" style="margin-top:8px;letter-spacing:.06em;text-transform:none;font-size:13px">Best guess · a person reads it from the photo</div>':''}</div>
       <span class="pill ${status[0]}">${status[1]}</span>
       <div class="conf"><div class="label">Confidence · ${pct}%</div><div class="dots" id="confDots">${dots(20,0)}</div></div>
       ${d.band_jpg?`<div><div class="label">What the model read</div><img class="band" src="data:image/jpeg;base64,${d.band_jpg}" alt="straightened digits"></div>`:''}
