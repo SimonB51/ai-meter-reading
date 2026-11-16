@@ -94,14 +94,15 @@ python scripts/evaluate.py path/to/photos data/labels.csv
 
 ## Deploy to AWS
 
-Requires AWS CLI v2 (recent), Docker and `aws configure` run with your own credentials.
+**CI/CD (recommended).** Every push to `main` runs the tests and builds the image (`ci.yml`), then builds, pushes to ECR and deploys to ECS Express Mode (`deploy.yml`). GitHub authenticates to AWS with **OIDC**, so no AWS keys are stored anywhere. One-time setup: an IAM OIDC provider for `token.actions.githubusercontent.com`, a role that only this repo's `main` branch can assume, and the repo variable `AWS_ROLE_ARN`. Manual runs: *Actions → deploy → Run workflow* with `deploy`, `status` or `destroy`.
+
+**From a laptop** (AWS CLI v2 + Docker):
 ```bash
-./infra/deploy.sh    # S3 + DynamoDB + IAM + ECR + build/push + ECS Express service
-./infra/status.sh    # status + public URL (≈5 min to become healthy)
-./infra/update.sh    # ship a new version
+./infra/deploy.sh    # S3 + DynamoDB + IAM + ECR + build/push + ECS Express service (updates if it exists)
+./infra/status.sh    # status + public HTTPS URL
 ./infra/destroy.sh   # delete everything (stops all costs)
 ```
-Cost when always on: about $50/month (Fargate 1 vCPU/2 GB ≈ $36 + ALB ≈ $16). S3, DynamoDB and logs cost cents at demo scale. Run `destroy.sh` when the demo is over.
+Cost when always on: about $50/month (Fargate 1 vCPU/2 GB ≈ $36 + load balancer ≈ $16). S3, DynamoDB and logs cost cents at demo scale.
 
 ## Repo map
 ```

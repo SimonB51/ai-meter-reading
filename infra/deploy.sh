@@ -4,13 +4,19 @@
 #   S3 (photos)  +  DynamoDB (readings)  +  ECR (image)  +  ECS Express Mode (Fargate + ALB + autoscaling)
 #   CloudWatch Logs come with it.
 #
-# Prereqs: AWS CLI v2 (recent: `aws ecs create-express-gateway-service help` must work),
-#          `aws configure` done with YOUR credentials, Docker running.
+# Runs from GitHub Actions (.github/workflows/deploy.yml) or from a machine with a recent AWS CLI v2,
+# AWS credentials and Docker. Re-runnable: if the service exists it only ships the new image.
 # Usage:   ./infra/deploy.sh            (re-runnable: existing resources are skipped)
 cd "$(dirname "$0")/.."
 source infra/config.sh
 
 say "Account ${ACCOUNT} / region ${REGION}"
+
+# already deployed? -> just ship the new image
+if [ -n "$(get_service_arn)" ]; then
+  say "Service already exists: updating it"
+  exec ./infra/update.sh
+fi
 
 # ---------- storage ----------
 say "S3 bucket ${BUCKET} (private, encrypted)"
@@ -97,7 +103,7 @@ SERVICE_ARN=$(aws ecs create-express-gateway-service --region "$REGION" \
   --primary-container "$CONTAINER" \
   --scaling-target '{"minTaskCount":1,"maxTaskCount":2,"autoScalingMetric":"AVERAGE_CPU","autoScalingTargetValue":60}' \
   --query 'service.serviceArn' --output text)
-echo "$SERVICE_ARN" > infra/.service_arn
+save_service_arn "$SERVICE_ARN"
 
 ENDPOINT=$(aws ecs describe-express-gateway-service --service-arn "$SERVICE_ARN" --region "$REGION" \
   --query 'service.activeConfigurations[0].ingressPaths[0].endpoint' --output text)

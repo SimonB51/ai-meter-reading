@@ -3,12 +3,16 @@
 cd "$(dirname "$0")/.."
 source infra/config.sh
 
-read -r -p "Delete the service, the ${BUCKET} bucket (photos) and the ${TABLE} table? [y/N] " ok
-[ "$ok" = "y" ] || exit 1
+if [ "${CONFIRM:-}" != "yes" ]; then
+  read -r -p "Delete the service, the ${BUCKET} bucket (photos) and the ${TABLE} table? [y/N] " ok
+  [ "$ok" = "y" ] || exit 1
+fi
 
-if [ -f infra/.service_arn ]; then
+ARN="$(get_service_arn)"
+if [ -n "$ARN" ]; then
   say "Service"
-  aws ecs delete-express-gateway-service --service-arn "$(cat infra/.service_arn)" --region "$REGION" >/dev/null && rm infra/.service_arn
+  aws ecs delete-express-gateway-service --service-arn "$ARN" --region "$REGION" >/dev/null
+  aws ssm delete-parameter --name "$PARAM" --region "$REGION" || true
 fi
 say "S3";        aws s3 rb "s3://${BUCKET}" --force || true
 say "DynamoDB";  aws dynamodb delete-table --table-name "$TABLE" --region "$REGION" >/dev/null || true

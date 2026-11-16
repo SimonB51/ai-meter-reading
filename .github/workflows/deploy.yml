@@ -1,0 +1,48 @@
+name: deploy
+# Builds the image and deploys it to AWS (ECS Express Mode).
+# Auth: GitHub OIDC -> IAM role (no AWS keys stored anywhere). Set the repo variable AWS_ROLE_ARN.
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "deploy (create or update) | status | destroy"
+        default: deploy
+        type: choice
+        options: [deploy, status, destroy]
+  push:
+    branches: [main]
+    paths: ["src/**", "models/**", "samples/**", "Dockerfile", "requirements.txt", "infra/**"]
+
+permissions:
+  id-token: write   # needed for OIDC
+  contents: read
+
+concurrency: deploy
+
+jobs:
+  deploy:
+    if: vars.AWS_ROLE_ARN != ''
+    runs-on: ubuntu-latest
+    env:
+      REGION: us-east-1
+      IMAGE_TAG: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - name: Latest AWS CLI (ECS Express Mode commands)
+        run: |
+          curl -sSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscli.zip
+          unzip -q awscli.zip && sudo ./aws/install --update && aws --version
+      - uses: docker/setup-buildx-action@v3
+      - name: Deploy
+        if: github.event_name == 'push' || inputs.action == 'deploy'
+        run: ./infra/deploy.sh
+      - name: Status
+        if: always()
+        run: ./infra/status.sh || true
+      - name: Destroy
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'destroy'
+        run: CONFIRM=yes ./infra/destroy.sh

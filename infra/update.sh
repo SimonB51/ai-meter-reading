@@ -2,7 +2,7 @@
 # Ship a new version: build -> push -> point the service at the new image (rolling deploy).
 cd "$(dirname "$0")/.."
 source infra/config.sh
-SERVICE_ARN="$(cat infra/.service_arn)"
+SERVICE_ARN="$(get_service_arn)"
 
 say "Build & push ${IMAGE}"
 aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$ECR"
