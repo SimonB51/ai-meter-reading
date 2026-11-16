@@ -48,6 +48,8 @@ The OBB detector (`models/yolo/orientation_obb.pt`) is a YOLOv8n-OBB fine-tuned 
 **Why there is no CNN in production.** A CNN that reads the raw photo needs far more data than we have (the ResNet18 tried in the team project reached ~1 %). Once the pipeline has isolated and straightened the digit band, the problem is much smaller, so I tried a small CNN (`models/digit_reader.pt`, 0.7 M parameters, 651 training bands) as a second reader. On the 64 test photos it fixed 3 readings, broke 1 and caught 1 wrong auto-accepted reading: +2 photos, which is within the noise of a test set this size, and on its own it is weaker than the OCR (75 % vs 84 %). It is kept in the repo (`use_digit_reader=True`, `scripts/train_digits.py`) and switched off. It becomes worth it once the human corrections collected by the review queue give it more training data.
 
 
+**Automation on unlabelled photos.** On the 151 other raw photos of the challenge (no labels, so only the automation rate can be measured), 54 % are accepted automatically, 24 % land in the 0.30–0.50 "probably right" band and 22 % below 0.30. Across all 215 photos that is about 60 % automated, a little below the 66 % of the test set.
+
 Main failure modes: digits caught mid-turn (e.g. 7↔8), heavy blur, and very small or dirty counters. Caveat: the eval photos come from the same pool the YOLO models were trained on, so the detection stages may look better here than on new meters. The OCR stage was never trained on this data.
 
 **What changed vs. the first (Colab) version**
