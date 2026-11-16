@@ -81,6 +81,8 @@ h1 em,h2 em{font-family:var(--serif);font-style:italic;font-weight:400;color:var
 .photo{width:100%;border-radius:16px;background:#111;object-fit:contain;max-height:340px;aspect-ratio:4/3}
 .out{display:flex;flex-direction:column;gap:16px;min-width:0}
 .reading{font-size:clamp(64px,10vw,104px);font-weight:800;letter-spacing:.04em;line-height:.9;font-variant-numeric:tabular-nums}
+.reading.unsure{color:#b9b3aa}
+.reading .q{color:var(--coral);margin-left:4px}
 .reading small{font-size:.24em;font-weight:600;color:var(--muted);letter-spacing:0;margin-left:8px}
 .pill{align-self:flex-start;display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:7px 14px;font-weight:700;font-size:14px}
 .pill.auto{background:var(--mint);color:var(--mint-ink)}
@@ -265,7 +267,7 @@ async function send(f){
     <img class="photo" src="${url}" alt="your photo">
     <div class="out">
       <div><div class="label">Reading · last 3 digits</div>
-      <div class="reading">${esc(d.value??'———')}<small>m³</small></div></div>
+      <div class="reading${d.status==='auto'?'':' unsure'}">${esc(d.value??'———')}${d.status==='auto'?'':'<span class="q">?</span>'}<small>m³</small></div>${d.status==='review'?'<div class="label" style="margin-top:8px;letter-spacing:.06em;text-transform:none;font-size:13px">Best guess · a person confirms or corrects it</div>':''}</div>
       <span class="pill ${status[0]}">${status[1]}</span>
       <div class="conf"><div class="label">Confidence · ${pct}%</div><div class="dots" id="confDots">${dots(20,0)}</div></div>
       ${d.band_jpg?`<div><div class="label">What the model read</div><img class="band" src="data:image/jpeg;base64,${d.band_jpg}" alt="straightened digits"></div>`:''}
