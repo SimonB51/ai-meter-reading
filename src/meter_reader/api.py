@@ -54,6 +54,20 @@ def ops():
 SAMPLES = Path(os.getenv("SAMPLES_DIR", Path(__file__).resolve().parents[2] / "samples"))
 
 
+@app.on_event("startup")
+def warm_up():
+    """Run one full reading at startup: the first inference (ONNX sessions, torch kernels) is
+    slow, so do it before the container reports healthy instead of on a visitor's first photo."""
+    import cv2
+    first = next(iter(sorted(SAMPLES.glob("*.jpg"))), None)
+    if first is not None:
+        try:
+            reader.read(cv2.imread(str(first)))
+            log.info("warm-up reading done")
+        except Exception as e:  # never block startup on the warm-up
+            log.warning("warm-up failed: %s", e)
+
+
 @app.get("/api/samples")
 def list_samples():
     return sorted(p.name for p in SAMPLES.glob("*.jpg"))
