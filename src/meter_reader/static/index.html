@@ -70,6 +70,13 @@ h1 em,h2 em{font-family:var(--serif);font-style:italic;font-weight:400;color:var
 .dots i.f{background:var(--coral);border-color:var(--coral)}
 .big small{color:var(--muted);font-size:12.5px}
 
+.window.mini{margin:0}
+.mini-body{display:grid;grid-template-columns:140px 1fr;gap:18px;padding:18px;align-items:center}
+.mini-body img{width:140px;height:140px;object-fit:cover;border-radius:14px;display:block}
+.mini-n{font-size:64px;font-weight:800;letter-spacing:.04em;line-height:1;margin:4px 0 12px;font-variant-numeric:tabular-nums}
+.mini-n small{font-size:18px;color:var(--muted);font-weight:600;letter-spacing:0;margin-left:6px}
+.mini-body .pill{font-size:12px;padding:6px 11px;white-space:nowrap}
+.mini-meta{font-size:12.5px;color:var(--muted);margin-top:10px}
 /* result */
 #result{scroll-margin-top:20px}
 .window{background:var(--card);border-radius:22px;box-shadow:var(--shadow);overflow:hidden;margin:10px 0 0}
@@ -174,12 +181,18 @@ footer a{text-decoration:none}footer a:hover{color:var(--ink)}
     </div>
 
     <div class="preview" aria-hidden="true">
-      <div class="label" style="margin:0 0 10px 2px">Real results · the sample photos below</div>
-      <div class="list">
-        <div class="item"><span class="tag" style="background:var(--lav)">1</span><div><b>Diehl meter</b><small>photo turned 90°</small></div><span class="v">045</span><span class="p ok">auto</span></div>
-        <div class="item"><span class="tag" style="background:var(--sun)">3</span><div><b>Aquadis meter</b><small>photo turned 96°</small></div><span class="v">616</span><span class="p ok">auto</span></div>
-        <div class="item"><span class="tag" style="background:var(--sky)">4</span><div><b>Wide shot</b><small>small meter, far away</small></div><span class="v">613</span><span class="p ok">auto</span></div>
-        <div class="item"><span class="tag" style="background:var(--rose)">6</span><div><b>Unusual blue meter</b><small>small digits, far away</small></div><span class="v">878</span><span class="p ask">check</span></div>
+      <div class="label" style="margin:0 0 10px 2px">What you get</div>
+      <div class="window mini">
+        <div class="bar-top"><i></i><i></i><i></i><span>meter-reader · reading</span></div>
+        <div class="mini-body">
+          <img src="/samples/1_32e454.jpg" alt="">
+          <div>
+            <div class="label">Reading</div>
+            <div class="mini-n">045<small>m³</small></div>
+            <span class="pill auto">✓ Accepted automatically</span>
+            <div class="mini-meta">Photo taken sideways · read in 0.6 s</div>
+          </div>
+        </div>
       </div>
       <div class="big">
         <div class="label">Automatic readings that are right</div>
