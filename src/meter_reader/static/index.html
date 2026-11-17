@@ -70,13 +70,47 @@ h1 em,h2 em{font-family:var(--serif);font-style:italic;font-weight:400;color:var
 .dots i.f{background:var(--coral);border-color:var(--coral)}
 .big small{color:var(--muted);font-size:12.5px}
 
-.window.mini{margin:0}
-.mini-body{display:grid;grid-template-columns:140px 1fr;gap:18px;padding:18px;align-items:center}
-.mini-body img{width:140px;height:140px;object-fit:cover;border-radius:14px;display:block}
-.mini-n{font-size:64px;font-weight:800;letter-spacing:.04em;line-height:1;margin:4px 0 12px;font-variant-numeric:tabular-nums}
-.mini-n small{font-size:18px;color:var(--muted);font-weight:600;letter-spacing:0;margin-left:6px}
-.mini-body .pill{font-size:12px;padding:6px 11px;white-space:nowrap}
-.mini-meta{font-size:12.5px;color:var(--muted);margin-top:10px}
+/* hero phone: camera -> reading -> result, 9 s loop */
+.preview{display:flex;justify-content:center}
+.phone{position:relative;width:270px;height:550px;border-radius:44px;background:#151515;padding:12px;box-shadow:0 30px 60px rgba(20,20,20,.18),0 0 0 2px #2a2a2a inset;transform:rotate(3deg)}
+.notch{position:absolute;top:22px;left:50%;width:84px;height:24px;margin-left:-42px;border-radius:14px;background:#151515;z-index:5}
+.screen{position:relative;width:100%;height:100%;border-radius:34px;overflow:hidden;background:#fff}
+.ph{position:absolute;inset:0;opacity:0}
+.cam,.busy{background:#000}
+.cam img,.busy img{width:100%;height:100%;object-fit:cover}
+.cam{animation:ph-cam 9s infinite}
+.busy{animation:ph-busy 9s infinite}
+.res-screen{animation:ph-res 9s infinite;padding:78px 18px 18px;display:flex;flex-direction:column;background:var(--bg)}
+@keyframes ph-cam{0%,30%{opacity:1}33%,100%{opacity:0}}
+@keyframes ph-busy{0%,30%{opacity:0}33%,45%{opacity:1}48%,100%{opacity:0}}
+@keyframes ph-res{0%,45%{opacity:0}48%,97%{opacity:1}100%{opacity:0}}
+.cam img{animation:cam-zoom 9s infinite}
+@keyframes cam-zoom{0%{transform:scale(1.25)}28%{transform:scale(1.05)}100%{transform:scale(1.05)}}
+.vf{position:absolute;inset:26% 16%}
+.vf i{position:absolute;width:26px;height:26px;border:3px solid #fff;opacity:.9}
+.vf i:nth-child(1){top:0;left:0;border-right:0;border-bottom:0;border-radius:8px 0 0 0}
+.vf i:nth-child(2){top:0;right:0;border-left:0;border-bottom:0;border-radius:0 8px 0 0}
+.vf i:nth-child(3){bottom:0;left:0;border-right:0;border-top:0;border-radius:0 0 0 8px}
+.vf i:nth-child(4){bottom:0;right:0;border-left:0;border-top:0;border-radius:0 0 8px 0}
+.cam-hint{position:absolute;top:56px;left:0;right:0;text-align:center;color:#fff;font-size:13px;font-weight:600;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+.shutter{position:absolute;bottom:26px;left:50%;width:62px;height:62px;margin-left:-31px;border-radius:50%;background:#fff;box-shadow:0 0 0 5px rgba(255,255,255,.35);animation:shutter 9s infinite}
+@keyframes shutter{0%,24%{transform:scale(1)}26%{transform:scale(.82)}28%,100%{transform:scale(1)}}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;animation:flash 9s infinite}
+@keyframes flash{0%,26%{opacity:0}27%{opacity:.9}31%,100%{opacity:0}}
+.busy img{filter:brightness(.45) blur(2px)}
+.busy-box{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:16px;padding:14px 18px;font-size:14px;font-weight:700;display:flex;gap:10px;align-items:center;white-space:nowrap}
+.spin{width:18px;height:18px;border-radius:50%;border:3px solid var(--coral);border-top-color:transparent;animation:spin .8s linear infinite}
+.rs-top{position:absolute;top:54px;left:0;right:0;text-align:center;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.06em}
+.rs-photo{width:100%;height:130px;object-fit:cover;border-radius:16px;margin-bottom:16px}
+.rs-n{font-size:64px;font-weight:800;letter-spacing:.04em;line-height:1;margin:2px 0 12px;font-variant-numeric:tabular-nums}
+.rs-n small{font-size:18px;color:var(--muted);font-weight:600;letter-spacing:0;margin-left:6px}
+.rs-pill{align-self:flex-start;font-size:12.5px;padding:6px 12px;white-space:nowrap}
+.rs-conf{margin-top:16px}
+.rs-conf .bar{height:8px;border-radius:8px;background:#f2d9d4;margin-top:6px;overflow:hidden}
+.rs-conf .bar b{display:block;height:100%;width:82%;background:var(--coral);border-radius:8px;animation:conf 9s infinite}
+@keyframes conf{0%,48%{width:0}60%,100%{width:82%}}
+.rs-btn{margin-top:auto;background:var(--coral);color:#fff;text-align:center;border-radius:14px;padding:13px;font-weight:700;font-size:15px}
+@media (prefers-reduced-motion:reduce){.ph,.cam img,.shutter,.flash,.rs-conf .bar b{animation:none}.res-screen{opacity:1}}
 /* result */
 #result{scroll-margin-top:20px}
 .window{background:var(--card);border-radius:22px;box-shadow:var(--shadow);overflow:hidden;margin:10px 0 0}
@@ -181,24 +215,33 @@ footer a{text-decoration:none}footer a:hover{color:var(--ink)}
     </div>
 
     <div class="preview" aria-hidden="true">
-      <div class="label" style="margin:0 0 10px 2px">What you get</div>
-      <div class="window mini">
-        <div class="bar-top"><i></i><i></i><i></i><span>meter-reader · reading</span></div>
-        <div class="mini-body">
-          <img src="/samples/1_32e454.jpg" alt="">
-          <div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <!-- 1. camera -->
+          <div class="ph cam">
+            <img src="/samples/1_32e454.jpg" alt="">
+            <div class="vf"><i></i><i></i><i></i><i></i></div>
+            <div class="cam-hint">Point at the meter</div>
+            <div class="shutter"></div>
+            <div class="flash"></div>
+          </div>
+          <!-- 2. reading -->
+          <div class="ph busy">
+            <img src="/samples/1_32e454.jpg" alt="">
+            <div class="busy-box"><span class="spin"></span>Reading the meter…</div>
+          </div>
+          <!-- 3. result -->
+          <div class="ph res-screen">
+            <div class="rs-top">Meter reading</div>
+            <img class="rs-photo" src="/samples/1_32e454.jpg" alt="">
             <div class="label">Reading</div>
-            <div class="mini-n">045<small>m³</small></div>
-            <span class="pill auto">✓ Accepted automatically</span>
-            <div class="mini-meta">Photo taken sideways · read in 0.6 s</div>
+            <div class="rs-n">045<small>m³</small></div>
+            <span class="pill auto rs-pill">✓ Accepted automatically</span>
+            <div class="rs-conf"><div class="label">Confidence · 82%</div><div class="bar"><b></b></div></div>
+            <div class="rs-btn">Next meter</div>
           </div>
         </div>
-      </div>
-      <div class="big">
-        <div class="label">Automatic readings that are right</div>
-        <div class="n">95 %</div>
-        <div class="dots" id="heroDots"></div>
-        <small>Measured on 189 labelled meter photos.</small>
       </div>
     </div>
   </div>
@@ -240,8 +283,6 @@ footer a{text-decoration:none}footer a:hover{color:var(--ink)}
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const dots=(n,filled)=>Array.from({length:n},(_,i)=>`<i class="${i<filled?'f':''}"></i>`).join('');
-$('#heroDots').innerHTML=dots(20,0);
-setTimeout(()=>{let k=0;const t=setInterval(()=>{const d=document.querySelectorAll('#heroDots i');if(k<20&&k<Math.round(20*.95))d[k++].classList.add('f');else clearInterval(t)},45)},400);
 
 const drop=$('#drop'),file=$('#file');
 drop.ondragover=e=>{e.preventDefault();drop.classList.add('hover')};
